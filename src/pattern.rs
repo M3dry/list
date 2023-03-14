@@ -1,6 +1,6 @@
 use crate::{
     parser::{Parser, ParserError},
-    tokenizer::{Literals, Types},
+    tokenizer::{Literals, BuiltinTypes},
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -36,6 +36,6 @@ impl PatternTree {
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum PatternToken {
     Literal(Literals),
-    Type(Types),
+    Type(BuiltinTypes),
     Identifier(String),
 }

@@ -8,3 +8,6 @@ edition = "2021"
 [dependencies]
 peek-nth = "0.2"
 either = "1.8.1"
+
+[dev-dependencies]
+goldentests = "1.1"

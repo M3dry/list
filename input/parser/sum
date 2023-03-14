@@ -1,0 +1,28 @@
+(+ 4 1)
+
+-- args: -i -p -f -e
+-- expected stdout:
+-- Ok(
+--     Call(
+--         Call {
+--             func: Right(
+--                 "+",
+--             ),
+--             params: [
+--                 Literal(
+--                     Int(
+--                         false,
+--                         4,
+--                     ),
+--                 ),
+--                 Literal(
+--                     Int(
+--                         false,
+--                         1,
+--                     ),
+--                 ),
+--             ],
+--         },
+--     ),
+-- )
+

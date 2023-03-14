@@ -2,14 +2,54 @@ use either::Either;
 use peek_nth::{IteratorExt, PeekableNth};
 
 use crate::pattern::{PatternToken, PatternTree};
-use crate::tokenizer::{Keywords, Literals, Token, Tokens, Types};
+use crate::tokenizer::{BuiltinTypes, Keywords, Literals, Token, Tokens};
+
+#[derive(Debug)]
+struct File {
+    types: Vec<()>,
+    functions: Vec<Defun>,
+}
+
+impl TryFrom<&mut Parser> for File {
+    type Error = ParserError;
+
+    fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
+        let mut functions = vec![];
+        // let types = vec![];
+
+        loop {
+            let peek = value.peek_nth(1);
+
+            if peek.is_none() {
+                break;
+            }
+
+            match peek {
+                Some(Token::Keyword(Keywords::Defun)) => {
+                    functions.push(Defun::try_from(&mut *value).map_err(|err| err.push("File"))?)
+                }
+                token => {
+                    return Err(ParserError::new(
+                        "Defun",
+                        format!("Expected a Defun keyword or a typedef, got {token:#?}"),
+                    ))
+                }
+            }
+        }
+
+        Ok(File {
+            types: vec![],
+            functions,
+        })
+    }
+}
 
 #[derive(Debug)]
 struct Defun {
     scope: Scope,
     name: String,
     args: ArgsTyped,
-    return_type: Types,
+    return_type: Type,
     body: Exp,
 }
 
@@ -29,9 +69,15 @@ impl TryFrom<&mut Parser> for Defun {
 
         let scope = Scope::try_from(&mut *value).unwrap_or(Scope::File);
 
-        let next = value.next().ok_or(ParserError::new("Defun keyword", format!("Expected more tokens")))?;
+        let next = value.next().ok_or(ParserError::new(
+            "Defun keyword",
+            format!("Expected more tokens"),
+        ))?;
         if next != Token::Keyword(Keywords::Defun) {
-            return Err(ParserError::new("Defun keyword", format!("Expected Defun keyword, got {next:#?}")));
+            return Err(ParserError::new(
+                "Defun keyword",
+                format!("Expected Defun keyword, got {next:#?}"),
+            ));
         }
 
         let next = value.next().ok_or(ParserError::new(
@@ -60,19 +106,7 @@ impl TryFrom<&mut Parser> for Defun {
             ));
         }
 
-        let next = value.next().ok_or(ParserError::new(
-            "Defun return",
-            format!("Expected more tokens"),
-        ))?;
-        let return_type = if let Token::Type(ret) = next {
-            ret
-        } else {
-            return Err(ParserError::new(
-                "Defun return",
-                format!("Expected Arrow keyword, got {next:#?}"),
-            ));
-        };
-
+        let return_type = Type::try_from(&mut *value).map_err(|err| err.push("Defun return"))?;
         let body = Exp::try_from(&mut *value).map_err(|err| err.push("Defun body"))?;
 
         Ok(Defun {
@@ -96,86 +130,128 @@ impl TryFrom<&mut Parser> for Scope {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.peek().ok_or(ParserError::new("Scope", format!("Expected more tokens")))?;
+        let next = value
+            .peek()
+            .ok_or(ParserError::new("Scope", format!("Expected more tokens")))?;
         match next {
             Token::ParenOpen => {
                 value.next();
-                let next = value.next().ok_or(ParserError::new("Scope", format!("Expected more tokens")))?;
+                let next = value
+                    .next()
+                    .ok_or(ParserError::new("Scope", format!("Expected more tokens")))?;
                 if let Token::Identifier(iden) = next {
                     if &iden[..] != "pub" {
-                        return Err(ParserError::new("Scope iden", format!("Expected pub, got {iden:#?}")));
+                        return Err(ParserError::new(
+                            "Scope iden",
+                            format!("Expected pub, got {iden:#?}"),
+                        ));
                     }
 
-                    let peek = value.peek().ok_or(ParserError::new("Scope crate", format!("Expected more tokens")))?;
+                    let peek = value.peek().ok_or(ParserError::new(
+                        "Scope crate",
+                        format!("Expected more tokens"),
+                    ))?;
                     if *peek == Token::ParenClose {
                         Ok(Scope::Full)
                     } else if let Token::Identifier(iden) = value.next().unwrap() {
                         if &iden[..] == "crate" {
                             Ok(Scope::Crate)
                         } else {
-                            Err(ParserError::new("Scope crate", format!("Expected crate, got {iden:#?}")))
+                            Err(ParserError::new(
+                                "Scope crate",
+                                format!("Expected crate, got {iden:#?}"),
+                            ))
                         }
                     } else {
-                        Err(ParserError::new("Scope", format!("Expected identifier, got {:#?}", value.next().unwrap())))
+                        Err(ParserError::new(
+                            "Scope",
+                            format!("Expected identifier, got {:#?}", value.next().unwrap()),
+                        ))
                     }
                 } else {
-                    Err(ParserError::new("Scope", format!("Expected identifier, got {next:#?}")))
+                    Err(ParserError::new(
+                        "Scope",
+                        format!("Expected identifier, got {next:#?}"),
+                    ))
                 }
             }
-            Token::Identifier(iden) => {
-                match &iden[..] {
-                    "pub" => {
-                        value.next();
-                        Ok(Scope::Full)
-                    },
-                    iden => Err(ParserError::new("Scope iden", format!("Expected pub, got {iden:#?}")))
+            Token::Identifier(iden) => match &iden[..] {
+                "pub" => {
+                    value.next();
+                    Ok(Scope::Full)
                 }
-            }
-            _ => Err(ParserError::new("Scope", format!("Expected identifier, got {next:#?}"))),
+                iden => Err(ParserError::new(
+                    "Scope iden",
+                    format!("Expected pub, got {iden:#?}"),
+                )),
+            },
+            _ => Err(ParserError::new(
+                "Scope",
+                format!("Expected identifier, got {next:#?}"),
+            )),
         }
     }
 }
 
 #[derive(Debug)]
-struct ArgsTyped(Vec<(String, Types)>);
+enum Type {
+    Builtin(BuiltinTypes),
+    Generic(String),
+    Custom(String),
+    Complex(String, Vec<Type>),
+}
 
-impl TryFrom<&mut Parser> for ArgsTyped {
+impl TryFrom<&mut Parser> for Type {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let mut args = vec![];
+        let next = value
+            .next()
+            .ok_or(ParserError::new("Type", format!("Expected more tokens")))?;
+        match next {
+            Token::Type(builtin) => Ok(Type::Builtin(builtin)),
+            Token::Generic(generic) => Ok(Type::Generic(generic)),
+            Token::Identifier(iden) => Ok(Type::Custom(iden)),
+            Token::ParenOpen => {
+                let next = value.next().ok_or(ParserError::new(
+                    "Type complex",
+                    format!("Expected more tokens"),
+                ))?;
+                match next {
+                    Token::Type(builtin) => {
+                        if value.next() != Some(Token::ParenClose) {
+                            Err(ParserError::new(
+                                "Type complex/builtin",
+                                format!("Expected an identifier, got a builtin type"),
+                            ))
+                        } else {
+                            Ok(Type::Builtin(builtin))
+                        }
+                    }
+                    Token::Identifier(iden) => {
+                        let mut types = vec![];
 
-        let next = value.next().ok_or(ParserError::new("ArgsTyped OpenParen", format!("Expected more tokens")))?;
-        if next != Token::ParenOpen {
-            return Err(ParserError::new("ArgsTyped OpenParen", format!("Expected ParenOpen, got {next:#?}")));
-        }
+                        while value.peek() != Some(&Token::ParenClose) {
+                            types.push(
+                                Type::try_from(&mut *value)
+                                    .map_err(|err| err.push("Type complex/types"))?,
+                            );
+                        }
+                        value.next();
 
-        loop {
-            let next = value.next().ok_or(ParserError::new("ArgsTyped name|CloseParen", format!("Expected more tokens")))?;
-            let name = if let Token::Identifier(iden) = next {
-                iden
-            } else if next == Token::ParenClose {
-                break;
-            } else {
-                return Err(ParserError::new("ArgsTyped name", format!("Expected identifier, got {next:#?}")))
-            };
-
-            let next = value.next().ok_or(ParserError::new("ArgsTyped arrow", format!("Expected more tokens")))?;
-            if next != Token::Keyword(Keywords::Arrow) {
-                return Err(ParserError::new("ArgsTyped arrow", format!("Expected Arrow keyword, got {next:#?}")))
+                        Ok(Type::Complex(iden, types))
+                    }
+                    next => Err(ParserError::new(
+                        "Type complex/other",
+                        format!("Expected an identifier, got {next:#?}"),
+                    )),
+                }
             }
-
-            let next = value.next().ok_or(ParserError::new("ArgsTyped type", format!("Expected more tokens")))?;
-            let arg_type = if let Token::Type(arg_type) = next {
-                arg_type
-            } else {
-                return Err(ParserError::new("ArgsTyped arrow", format!("Expected Arrow keyword, got {next:#?}")));
-            };
-
-            args.push((name, arg_type))
+            _ => Err(ParserError::new(
+                "Type",
+                format!("Expected type, indentifier or OpenParen, got {next:#?}"),
+            )),
         }
-
-        Ok(ArgsTyped(args))
     }
 }
 
@@ -281,7 +357,7 @@ impl TryFrom<&mut Parser> for Exp {
                             params,
                         })))
                     }
-                    _ => unreachable!(),
+                    token => return Err(ParserError::new("Exp", format!("got {token:#?}"))),
                 }
             }
             Token::Identifier(_) => {
@@ -561,6 +637,52 @@ impl TryFrom<&mut Parser> for Lambda {
 }
 
 #[derive(Debug)]
+struct ArgsTyped {
+    generics: Vec<String>,
+    args: Vec<(String, Type)>,
+}
+
+impl TryFrom<&mut Parser> for ArgsTyped {
+    type Error = ParserError;
+
+    fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
+        let mut args = vec![];
+        let mut generics = vec![];
+
+        let next = value.next().ok_or(ParserError::new(
+            "ArgsTyped OpenParen",
+            format!("Expected more tokens"),
+        ))?;
+        if next != Token::ParenOpen {
+            return Err(ParserError::new(
+                "ArgsTyped OpenParen",
+                format!("Expected ParenOpen, got {next:#?}"),
+            ));
+        }
+
+        loop {
+            if value.peek() == Some(&Token::ParenClose) {
+                value.next();
+                break;
+            }
+            let arg = Arg::try_from(&mut *value).map_err(|err| err.push("ArgsTyped"))?;
+            match arg {
+                Arg::Generic(generic) => generics.push(generic),
+                Arg::Simple(_) => {
+                    return Err(ParserError::new(
+                        "ArgsTyped arg",
+                        format!("Expected a generic or a typed arg, got a simple arg"),
+                    ))
+                }
+                Arg::Typed(name, arg_type) => args.push((name, arg_type)),
+            }
+        }
+
+        Ok(ArgsTyped { generics, args })
+    }
+}
+
+#[derive(Debug)]
 struct Args(Vec<String>);
 
 impl TryFrom<&mut Parser> for Args {
@@ -579,24 +701,60 @@ impl TryFrom<&mut Parser> for Args {
 
         let mut args = vec![];
         loop {
-            let token = value.next().ok_or(ParserError::new(
-                "Args",
-                format!("Expected ParenClose, got nothing"),
-            ))?;
-
-            if token == Token::ParenClose {
+            if value.peek() == Some(&Token::ParenClose) {
+                value.next();
                 break;
-            } else if let Token::Identifier(iden) = token {
-                args.push(iden)
-            } else {
-                return Err(ParserError::new(
-                    "Args",
-                    format!("Expected ParenClose or Identifier, got {token:#?}"),
-                ));
+            }
+            let arg = Arg::try_from(&mut *value).map_err(|err| err.push("Args"))?;
+            match arg {
+                Arg::Simple(name) => args.push(name),
+                _ => {
+                    return Err(ParserError::new(
+                        "Args arg",
+                        format!("Expected just simple and generic args"),
+                    ))
+                }
             }
         }
 
         Ok(Self(args))
+    }
+}
+
+#[derive(Debug)]
+enum Arg {
+    Generic(String),
+    Typed(String, Type),
+    Simple(String),
+}
+
+impl TryFrom<&mut Parser> for Arg {
+    type Error = ParserError;
+
+    fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
+        let next = value
+            .next()
+            .ok_or(ParserError::new("Arg", format!("Expected more tokens")))?;
+        let name = match next {
+            Token::Identifier(iden) => iden,
+            Token::Generic(generic) => return Ok(Arg::Generic(generic)),
+            _ => {
+                return Err(ParserError::new(
+                    "Arg name",
+                    format!("Expected identifier, got {next:#?}"),
+                ));
+            }
+        };
+
+        let next = value.peek();
+        if next != Some(&Token::Keyword(Keywords::Arrow)) {
+            return Ok(Arg::Simple(name));
+        }
+        value.next();
+
+        let arg_type = Type::try_from(&mut *value).map_err(|err| err.push("Arg type"))?;
+
+        Ok(Arg::Typed(name, arg_type))
     }
 }
 
@@ -626,12 +784,16 @@ pub struct Parser {
 }
 
 impl Parser {
-    pub fn parse(tokens: Tokens) -> Result<(), ParserError> {
+    pub fn parse(tokens: Tokens, exp: bool) -> Result<(), ParserError> {
         let mut parser = Self {
             tokens: tokens.0.into_iter().peekable_nth(),
         };
 
-        println!("{:#?}", Defun::try_from(&mut parser)?);
+        if exp {
+            println!("{:#?}", Exp::try_from(&mut parser));
+        } else {
+            println!("{:#?}", File::try_from(&mut parser));
+        }
         Ok(())
     }
 
