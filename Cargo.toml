@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 peek-nth = "0.2"
 either = "1.8.1"
+clap = { version = "4.1.10", features = ["derive"] }
 
 [dev-dependencies]
 goldentests = "1.1"

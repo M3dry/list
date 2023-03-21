@@ -1,28 +1,26 @@
 (+ 4 1)
 
--- args: -i -p -f -e
+-- args: -f parser expression
 -- expected stdout:
--- Ok(
---     Call(
---         Call {
---             func: Right(
---                 "+",
+-- Call(
+--     Call {
+--         func: Right(
+--             "+",
+--         ),
+--         params: [
+--             Literal(
+--                 Int(
+--                     false,
+--                     4,
+--                 ),
 --             ),
---             params: [
---                 Literal(
---                     Int(
---                         false,
---                         4,
---                     ),
+--             Literal(
+--                 Int(
+--                     false,
+--                     1,
 --                 ),
---                 Literal(
---                     Int(
---                         false,
---                         1,
---                     ),
---                 ),
---             ],
---         },
---     ),
+--             ),
+--         ],
+--     },
 -- )
 

@@ -3,8 +3,6 @@ use std::{
     str::{Chars, FromStr},
 };
 
-use either::Either;
-
 #[derive(Debug, PartialEq, Eq)]
 pub struct Tokens(pub(crate) Vec<Token>);
 
@@ -15,6 +13,8 @@ pub(crate) enum Token {
     Type(BuiltinTypes),
     ParenOpen,
     ParenClose,
+    CurlyOpen,
+    CurlyClose,
     Identifier(String),
     Generic(String),
 }
@@ -39,6 +39,9 @@ pub(crate) enum Keywords {
     Match,
     Defun,
     Lambda,
+    Let,
+    Struct,
+    Enum,
     Arrow,
 }
 
@@ -70,6 +73,8 @@ impl FromStr for Tokens {
             match char {
                 '(' => tokens.push(Token::ParenOpen),
                 ')' => tokens.push(Token::ParenClose),
+                '{' => tokens.push(Token::CurlyOpen),
+                '}' => tokens.push(Token::CurlyClose),
                 '\'' => {
                     let ch = chars.next().unwrap();
 
@@ -159,12 +164,10 @@ fn token_from_str(str: &str) -> Vec<Token> {
         "if" => vec![Token::Keyword(Keywords::If)],
         "match" => vec![Token::Keyword(Keywords::Match)],
         "defun" => vec![Token::Keyword(Keywords::Defun)],
-        arrow if arrow.len() >= 2 && &arrow[..2] == "->" => {
-            let mut ret = vec![Token::Keyword(Keywords::Arrow)];
-            ret.append(&mut token_from_str(&str[2..]));
-            ret
-        }
         "lambda" => vec![Token::Keyword(Keywords::Lambda)],
+        "let" => vec![Token::Keyword(Keywords::Let)],
+        "struct" => vec![Token::Keyword(Keywords::Struct)],
+        "enum" => vec![Token::Keyword(Keywords::Enum)],
         "true" => vec![Token::Literal(Literals::Bool(true))],
         "false" => vec![Token::Literal(Literals::Bool(false))],
         "u8" => vec![Token::Type(BuiltinTypes::U8)],
@@ -180,6 +183,11 @@ fn token_from_str(str: &str) -> Vec<Token> {
         "string" => vec![Token::Type(BuiltinTypes::String)],
         "char" => vec![Token::Type(BuiltinTypes::Char)],
         "bool" => vec![Token::Type(BuiltinTypes::Bool)],
+        arrow if arrow.len() >= 2 && &arrow[..2] == "->" => {
+            let mut ret = vec![Token::Keyword(Keywords::Arrow)];
+            ret.append(&mut token_from_str(&str[2..]));
+            ret
+        }
         num if num.len() > 1 && &num[..1] == "-" && num[1..].parse::<u128>().is_ok() => {
             vec![Token::Literal(Literals::Int(
                 true,

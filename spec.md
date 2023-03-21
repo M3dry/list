@@ -103,3 +103,12 @@
             (n if (= n 4) (+ n 20))
             (_ 10)))
     ```
+# struct
+## syntax
+    ```
+    (struct name { field type })
+    ```
+## example
+    ```
+    (struct Person { name String age i32 })
+    ```

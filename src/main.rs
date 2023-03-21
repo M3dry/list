@@ -1,21 +1,65 @@
-use list::{tokenizer::Tokens, parser::Parser};
+use clap::{Parser, Subcommand};
+use list::{parser::Parser as lP, tokenizer::Tokens};
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    #[arg(short, long)]
+    file: bool,
+    #[clap(subcommand)]
+    token_or_parser: TokenOrParser,
+}
+
+#[derive(Subcommand, Debug)]
+enum TokenOrParser {
+    Parser {
+        #[clap(subcommand)]
+        parsertype: ParserType,
+    },
+    Token {
+        path: String,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum ParserType {
+    File { path: String },
+    Struct { path: String },
+    Function { path: String },
+    Expression { path: String },
+}
+
+impl ParserType {
+    fn from_tokens_to_string(&self, file: bool) -> String {
+        let tokens = input(file, self.get_path());
+        match self {
+            Self::File { .. } => lP::file(tokens),
+            Self::Struct { .. } => lP::r#struct(tokens),
+            Self::Function { .. } => lP::r#function(tokens),
+            Self::Expression { .. } => lP::r#expression(tokens),
+        }
+    }
+
+    fn get_path(&self) -> &String {
+        match self {
+            Self::File { path } | Self::Struct { path } | Self::Function { path } | Self::Expression { path } => path,
+        }
+    }
+}
 
 fn main() {
-    let args: Vec<String> = std::env::args().collect();
+    let args = Args::parse();
 
-    if args.len() >= 3 && args[1] == "-i" {
-        if args.len() >= 5 && args[2] == "-p" {
-            let _ = match &args[3][..] {
-                "-f" if args.len() >= 6 && args[4] == "-e" => Parser::parse(std::fs::read_to_string(&args[5]).unwrap().parse().unwrap(), true),
-                "-f" if args.len() >= 6 && args[4] == "-e" => Parser::parse(std::fs::read_to_string(&args[5]).unwrap().parse().unwrap(), false),
-                "-e" => Parser::parse(args[4].parse().unwrap(), true),
-                "-d" => Parser::parse(args[4].parse().unwrap(), false),
-                _ => unimplemented!()
-            };
-        } else if args.len() >= 4 && args[2] == "-f" {
-            println!("{:#?}", std::fs::read_to_string(&args[3]).unwrap().parse::<Tokens>());
-        } else {
-            println!("{:#?}", args[2].parse::<Tokens>());
-        }
+    match args.token_or_parser {
+        TokenOrParser::Parser { parsertype } => println!("{}", parsertype.from_tokens_to_string(args.file)),
+        TokenOrParser::Token { path } => println!("{:#?}", input(args.file, &path)),
+    }
+}
+
+fn input(file: bool, path: &String) -> Tokens {
+    if file {
+        std::fs::read_to_string(&path).unwrap().parse().unwrap()
+    } else {
+        path.parse().unwrap()
     }
 }

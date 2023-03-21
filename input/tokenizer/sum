@@ -1,28 +1,25 @@
 (+ 4 1)
 
--- args: -i -f
+-- args: -f token
 -- expected stdout:
--- Ok(
---     Tokens(
---         [
---             ParenOpen,
---             Identifier(
---                 "+",
+-- Tokens(
+--     [
+--         ParenOpen,
+--         Identifier(
+--             "+",
+--         ),
+--         Literal(
+--             Int(
+--                 false,
+--                 4,
 --             ),
---             Literal(
---                 Int(
---                     false,
---                     4,
---                 ),
+--         ),
+--         Literal(
+--             Int(
+--                 false,
+--                 1,
 --             ),
---             Literal(
---                 Int(
---                     false,
---                     1,
---                 ),
---             ),
---             ParenClose,
---         ],
---     ),
+--         ),
+--         ParenClose,
+--     ],
 -- )
-
