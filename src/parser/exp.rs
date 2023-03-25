@@ -115,6 +115,35 @@ impl TryFrom<&mut Parser> for Exp {
                             params,
                         })))
                     }
+                    Token::AngleBracketOpen | Token::AngleBracketClose => {
+                        value.pop_front();
+
+                        let angle = match value.pop_front().unwrap() {
+                            Token::AngleBracketOpen => "<",
+                            Token::AngleBracketClose => ">",
+                            _ => panic!("wtf"),
+                        };
+
+                        let mut params = vec![];
+
+                        loop {
+                            let peek = value
+                                .first()
+                                .ok_or(error!("Exp call/iden", format!("Expected more tokens"),))?;
+
+                            if *peek == Token::ParenClose {
+                                value.pop_front();
+                                break;
+                            } else {
+                                params.push(error!(Exp::try_from(&mut *value), "Exp")?)
+                            }
+                        }
+
+                        Ok(Exp::Call(Box::new(Call {
+                            func: Either::Right(String::from(angle)),
+                            params,
+                        })))
+                    }
                     Token::ParenOpen => {
                         value.pop_front();
                         let lambda = error!(Lambda::try_from(&mut *value), "Exp call/lambda")?;
@@ -148,6 +177,31 @@ impl TryFrom<&mut Parser> for Exp {
                 } else {
                     panic!("how")
                 }
+            }
+            Token::AngleBracketOpen | Token::AngleBracketClose => {
+                let angle = match value.pop_front().unwrap() {
+                    Token::AngleBracketOpen => "<",
+                    _ => ">",
+                };
+                let mut params = vec![];
+
+                loop {
+                    let peek = value
+                        .first()
+                        .ok_or(error!("Exp call/iden", format!("Expected more tokens"),))?;
+
+                    if *peek == Token::ParenClose {
+                        value.pop_front();
+                        break;
+                    } else {
+                        params.push(error!(Exp::try_from(&mut *value), "Exp")?)
+                    }
+                }
+
+                Ok(Exp::Call(Box::new(Call {
+                    func: Either::Right(String::from(angle)),
+                    params,
+                })))
             }
             _ => {
                 let next = value.pop_front().unwrap();
