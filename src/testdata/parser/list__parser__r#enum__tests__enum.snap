@@ -1,0 +1,83 @@
+---
+source: src/parser/enum.rs
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{:#?}\", Enum::try_from\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+---
+(enum Hello Xy)
+Ok(
+    Enum {
+        name: "Hello",
+        generics: [],
+        variants: [
+            Simple(
+                "Xy",
+            ),
+        ],
+    },
+)
+
+(enum Hello (Xy))
+Ok(
+    Enum {
+        name: "Hello",
+        generics: [],
+        variants: [
+            Simple(
+                "Xy",
+            ),
+        ],
+    },
+)
+
+(enum Hello :t (Xy) (Xz { x->:t y->i32 }) (Xx i32 <i32 [string]>))
+Ok(
+    Enum {
+        name: "Hello",
+        generics: [
+            "t",
+        ],
+        variants: [
+            Simple(
+                "Xy",
+            ),
+            Struct(
+                "Xz",
+                StructFields(
+                    [
+                        StructField {
+                            name: "x",
+                            type: Generic(
+                                "t",
+                            ),
+                        },
+                        StructField {
+                            name: "y",
+                            type: Builtin(
+                                I32,
+                            ),
+                        },
+                    ],
+                ),
+            ),
+            WithType(
+                "Xx",
+                [
+                    Builtin(
+                        I32,
+                    ),
+                    Touple(
+                        [
+                            Builtin(
+                                I32,
+                            ),
+                            Array(
+                                Builtin(
+                                    String,
+                                ),
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+        ],
+    },
+)

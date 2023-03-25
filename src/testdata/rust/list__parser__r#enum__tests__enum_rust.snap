@@ -1,0 +1,12 @@
+---
+source: src/parser/enum.rs
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{}\",\n                                |parser|\n    match Enum::try_from(parser) {\n        Ok(res) => res.to_string(),\n        Err(err) => format!(\"{err:#?}\"),\n    }\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+---
+(enum Hello Xy)
+enum Hello {Xy}
+
+(enum Hello (Xy))
+enum Hello {Xy}
+
+(enum Hello :t (Xy) (Xz { x->:t y->i32 }) (Xx i32 <i32 [string]>))
+enum Hello<t> {Xy, Xz {x: t, y: i32}, Xx(i32, (i32, Vec<String>))}

@@ -1,0 +1,15 @@
+---
+source: src/parser/defun.rs
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{}\",\n                                |parser|\n    match Defun::try_from(parser) {\n        Ok(res) => res.to_string(),\n        Err(err) => format!(\"{err:#?}\"),\n    }\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+---
+(defun func (x->i32)->string "hello")
+fn func(x: i32) -> String {"hello"}
+
+(pub defun func (x->i32 y->i128)->i64 (+ x y))
+pub fn func(x: i32, y: i128) -> i64 {+(x, y)}
+
+(crate defun func (:t x->:t y->:t)->:t x)
+pub(crate) fn func<t>(x: t, y: t) -> t {x}
+
+(defun func ()-><[i32] string> (func))
+fn func() -> (Vec<i32>, String) {func()}

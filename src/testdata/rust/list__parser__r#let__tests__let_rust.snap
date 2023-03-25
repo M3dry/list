@@ -1,0 +1,12 @@
+---
+source: src/parser/let.rs
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{}\",\n                                |parser|\n    match Let::try_from(parser) {\n        Ok(res) => res.to_string(),\n        Err(err) => format!(\"{err:#?}\"),\n    }\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+---
+(let (x (+ 10 20)) x)
+{let x = +(10, 20);
+x}
+
+(let ((x (+ 10 20)) (y (= 10 10))) (if y x 0))
+{let x = +(10, 20);
+let y = =(10, 10);
+if y {x} else {0}}

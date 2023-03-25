@@ -1,0 +1,73 @@
+---
+source: src/parser/lambda.rs
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{:#?}\", Lambda::try_from\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+---
+(lambda (x y) (+ x y))
+Ok(
+    Lambda {
+        args: Args(
+            [
+                "x",
+                "y",
+            ],
+        ),
+        body: Call(
+            Call {
+                func: Right(
+                    "+",
+                ),
+                params: [
+                    Identifier(
+                        "x",
+                    ),
+                    Identifier(
+                        "y",
+                    ),
+                ],
+            },
+        ),
+    },
+)
+
+(lambda (x y z) (= x y (= x z)))
+Ok(
+    Lambda {
+        args: Args(
+            [
+                "x",
+                "y",
+                "z",
+            ],
+        ),
+        body: Call(
+            Call {
+                func: Right(
+                    "=",
+                ),
+                params: [
+                    Identifier(
+                        "x",
+                    ),
+                    Identifier(
+                        "y",
+                    ),
+                    Call(
+                        Call {
+                            func: Right(
+                                "=",
+                            ),
+                            params: [
+                                Identifier(
+                                    "x",
+                                ),
+                                Identifier(
+                                    "z",
+                                ),
+                            ],
+                        },
+                    ),
+                ],
+            },
+        ),
+    },
+)

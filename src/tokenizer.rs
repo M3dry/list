@@ -30,11 +30,24 @@ impl From<Vec<Token>> for Tokens {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) enum Literals {
+pub enum Literals {
     Int(bool, u128),
     String(String),
     Char(char),
     Bool(bool),
+}
+
+impl ToString for Literals {
+    fn to_string(&self) -> String {
+        match self {
+            Literals::Int(true, num) => format!("-{}", &num.to_string()),
+            Literals::Int(false, num) => num.to_string(),
+            Literals::String(str) => format!(r#""{str}""#),
+            Literals::Char(char) => format!("'{char}'"),
+            Literals::Bool(true) => "true".to_string(),
+            Literals::Bool(false) => "false".to_string(),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -50,7 +63,7 @@ pub(crate) enum Keywords {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) enum BuiltinTypes {
+pub enum BuiltinTypes {
     U8,
     U16,
     U32,
@@ -64,6 +77,27 @@ pub(crate) enum BuiltinTypes {
     String,
     Char,
     Bool,
+}
+
+impl ToString for BuiltinTypes {
+    fn to_string(&self) -> String {
+        match self {
+            BuiltinTypes::U8 => "u8",
+            BuiltinTypes::U16 => "u16",
+            BuiltinTypes::U32 => "u32",
+            BuiltinTypes::U64 => "u64",
+            BuiltinTypes::U128 => "k128",
+            BuiltinTypes::I8 => "i8",
+            BuiltinTypes::I16 => "i16",
+            BuiltinTypes::I32 => "i32",
+            BuiltinTypes::I64 => "i64",
+            BuiltinTypes::I128 => "i128",
+            BuiltinTypes::String => "String",
+            BuiltinTypes::Char => "char",
+            BuiltinTypes::Bool => "bool",
+        }
+        .to_string()
+    }
 }
 
 impl FromStr for Tokens {

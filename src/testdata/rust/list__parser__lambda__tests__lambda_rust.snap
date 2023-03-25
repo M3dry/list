@@ -1,0 +1,9 @@
+---
+source: src/parser/lambda.rs
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{}\",\n                                |parser|\n    match Lambda::try_from(parser) {\n        Ok(res) => res.to_string(),\n        Err(err) => format!(\"{err:#?}\"),\n    }\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+---
+(lambda (x y) (+ x y))
+|x, y| {+(x, y)}
+
+(lambda (x y z) (= x y (= x z)))
+|x, y, z| {=(x, y, =(x, z))}
