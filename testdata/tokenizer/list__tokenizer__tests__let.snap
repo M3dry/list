@@ -1,0 +1,117 @@
+---
+source: src/tokenizer.rs
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{:#?}\", Tokens :: from_str(line)))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+---
+(let (x (+ 10 20)) x)
+Ok(
+    Tokens(
+        [
+            ParenOpen,
+            Keyword(
+                Let,
+            ),
+            ParenOpen,
+            Identifier(
+                "x",
+            ),
+            ParenOpen,
+            Identifier(
+                "+",
+            ),
+            Literal(
+                Int(
+                    false,
+                    10,
+                ),
+            ),
+            Literal(
+                Int(
+                    false,
+                    20,
+                ),
+            ),
+            ParenClose,
+            ParenClose,
+            Identifier(
+                "x",
+            ),
+            ParenClose,
+        ],
+    ),
+)
+
+(let ((x (+ 10 20)) (y (= 10 10))) (if y x 0))
+Ok(
+    Tokens(
+        [
+            ParenOpen,
+            Keyword(
+                Let,
+            ),
+            ParenOpen,
+            ParenOpen,
+            Identifier(
+                "x",
+            ),
+            ParenOpen,
+            Identifier(
+                "+",
+            ),
+            Literal(
+                Int(
+                    false,
+                    10,
+                ),
+            ),
+            Literal(
+                Int(
+                    false,
+                    20,
+                ),
+            ),
+            ParenClose,
+            ParenClose,
+            ParenOpen,
+            Identifier(
+                "y",
+            ),
+            ParenOpen,
+            Identifier(
+                "=",
+            ),
+            Literal(
+                Int(
+                    false,
+                    10,
+                ),
+            ),
+            Literal(
+                Int(
+                    false,
+                    10,
+                ),
+            ),
+            ParenClose,
+            ParenClose,
+            ParenClose,
+            ParenOpen,
+            Keyword(
+                If,
+            ),
+            Identifier(
+                "y",
+            ),
+            Identifier(
+                "x",
+            ),
+            Literal(
+                Int(
+                    false,
+                    0,
+                ),
+            ),
+            ParenClose,
+            ParenClose,
+        ],
+    ),
+)

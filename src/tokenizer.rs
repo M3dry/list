@@ -13,6 +13,10 @@ pub(crate) enum Token {
     Type(BuiltinTypes),
     ParenOpen,
     ParenClose,
+    BracketOpen,
+    BracketClose,
+    AngleBracketOpen,
+    AngleBracketClose,
     CurlyOpen,
     CurlyClose,
     Identifier(String),
@@ -73,6 +77,10 @@ impl FromStr for Tokens {
             match char {
                 '(' => tokens.push(Token::ParenOpen),
                 ')' => tokens.push(Token::ParenClose),
+                '[' => tokens.push(Token::BracketOpen),
+                '<' => tokens.push(Token::AngleBracketOpen),
+                '>' => tokens.push(Token::AngleBracketClose),
+                ']' => tokens.push(Token::BracketClose),
                 '{' => tokens.push(Token::CurlyOpen),
                 '}' => tokens.push(Token::CurlyClose),
                 '\'' => {
@@ -104,7 +112,14 @@ impl FromStr for Tokens {
                     )));
                 }
                 char => {
-                    if char == '(' || char == ')' || char == ' ' {
+                    if char == '('
+                        || char == ')'
+                        || char == '['
+                        || char == ']'
+                        || char == '<'
+                        || char == '>'
+                        || char == ' '
+                    {
                         continue;
                     }
                     let mut chs = vec![];
@@ -125,7 +140,14 @@ impl FromStr for Tokens {
                     }
 
                     while let Some(char) = chars.peek() {
-                        if *char == '(' || *char == ')' || *char == ' ' {
+                        if *char == '('
+                            || *char == ')'
+                            || *char == '['
+                            || *char == ']'
+                            || *char == '<'
+                            || *char == '>'
+                            || *char == ' '
+                        {
                             break;
                         } else if *char == '-' {
                             let ch = chars.next().unwrap();
@@ -233,4 +255,40 @@ fn check_arrow(chars: &mut Peekable<Chars>) -> Result<Triple, &'static str> {
         Some(char) => Ok(Triple::Char(char)),
         _ => Err("Expected more chars"),
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    macro_rules! snapshot {
+        ($name:tt, $path:tt) => {
+            #[test]
+            fn $name() {
+                let contents = include_str!($path);
+                let mut settings = insta::Settings::clone_current();
+                settings.set_snapshot_path("../testdata/tokenizer/");
+                settings.bind(|| {
+                    insta::assert_snapshot!(contents
+                        .lines()
+                        .filter_map(|line| if line != "" {
+                            Some(format!("{line}\n{:#?}", Tokens::from_str(line)))
+                        } else {
+                            None
+                        })
+                        .collect::<Vec<String>>()
+                        .join("\n\n"));
+                });
+            }
+        };
+    }
+
+    snapshot!(test_calling, "../testdata/input/calling.lt");
+    snapshot!(test_if, "../testdata/input/if.lt");
+    //snapshot!(test_match, "../testdata/input/match.lt");
+    snapshot!(test_defun, "../testdata/input/defun.lt");
+    snapshot!(test_lambda, "../testdata/input/lambda.lt");
+    snapshot!(test_let, "../testdata/input/let.lt");
+    snapshot!(test_struct, "../testdata/input/struct.lt");
+    snapshot!(test_enum, "../testdata/input/enum.lt");
 }

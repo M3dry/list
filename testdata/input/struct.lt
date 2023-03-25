@@ -1,0 +1,5 @@
+(struct Hello { x->i32 y->string })
+
+(struct Hello :t :x { x->:t y->:x })
+
+(struct Hello :t {})

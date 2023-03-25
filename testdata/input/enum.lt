@@ -1,0 +1,5 @@
+(enum Hello Xy)
+
+(enum Hello (Xy))
+
+(enum Hello :t (Xy) (Xz { x->:t y->i32 }) (Xx i32 <i32 [string]>))

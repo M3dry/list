@@ -1,0 +1,102 @@
+---
+source: src/tokenizer.rs
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{:#?}\", Tokens :: from_str(line)))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+---
+(struct Hello { x->i32 y->string })
+Ok(
+    Tokens(
+        [
+            ParenOpen,
+            Keyword(
+                Struct,
+            ),
+            Identifier(
+                "Hello",
+            ),
+            CurlyOpen,
+            Identifier(
+                "x",
+            ),
+            Keyword(
+                Arrow,
+            ),
+            Type(
+                I32,
+            ),
+            Identifier(
+                "y",
+            ),
+            Keyword(
+                Arrow,
+            ),
+            Type(
+                String,
+            ),
+            CurlyClose,
+            ParenClose,
+        ],
+    ),
+)
+
+(struct Hello :t :x { x->:t y->:x })
+Ok(
+    Tokens(
+        [
+            ParenOpen,
+            Keyword(
+                Struct,
+            ),
+            Identifier(
+                "Hello",
+            ),
+            Generic(
+                "t",
+            ),
+            Generic(
+                "x",
+            ),
+            CurlyOpen,
+            Identifier(
+                "x",
+            ),
+            Keyword(
+                Arrow,
+            ),
+            Generic(
+                "t",
+            ),
+            Identifier(
+                "y",
+            ),
+            Keyword(
+                Arrow,
+            ),
+            Generic(
+                "x",
+            ),
+            CurlyClose,
+            ParenClose,
+        ],
+    ),
+)
+
+(struct Hello :t {})
+Ok(
+    Tokens(
+        [
+            ParenOpen,
+            Keyword(
+                Struct,
+            ),
+            Identifier(
+                "Hello",
+            ),
+            Generic(
+                "t",
+            ),
+            CurlyOpen,
+            CurlyClose,
+            ParenClose,
+        ],
+    ),
+)

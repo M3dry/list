@@ -1,0 +1,5 @@
+(if true 10 4)
+
+(if (= 10 5) 10 (func 4 10))
+
+(if (= (func 1 10) (xyzfunc 100 (+ 1 10))) 100 (xyzfunc 100 200))

@@ -1,0 +1,184 @@
+---
+source: src/tokenizer.rs
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{:#?}\", Tokens :: from_str(line)))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+---
+(defun func (x->i32)->string "hello")
+Ok(
+    Tokens(
+        [
+            ParenOpen,
+            Keyword(
+                Defun,
+            ),
+            Identifier(
+                "func",
+            ),
+            ParenOpen,
+            Identifier(
+                "x",
+            ),
+            Keyword(
+                Arrow,
+            ),
+            Type(
+                I32,
+            ),
+            ParenClose,
+            Keyword(
+                Arrow,
+            ),
+            Type(
+                String,
+            ),
+            Literal(
+                String(
+                    "hello",
+                ),
+            ),
+            ParenClose,
+        ],
+    ),
+)
+
+(pub defun func (x->i32 y->i128)->i64 (+ x y))
+Ok(
+    Tokens(
+        [
+            ParenOpen,
+            Identifier(
+                "pub",
+            ),
+            Keyword(
+                Defun,
+            ),
+            Identifier(
+                "func",
+            ),
+            ParenOpen,
+            Identifier(
+                "x",
+            ),
+            Keyword(
+                Arrow,
+            ),
+            Type(
+                I32,
+            ),
+            Identifier(
+                "y",
+            ),
+            Keyword(
+                Arrow,
+            ),
+            Type(
+                I128,
+            ),
+            ParenClose,
+            Keyword(
+                Arrow,
+            ),
+            Type(
+                I64,
+            ),
+            ParenOpen,
+            Identifier(
+                "+",
+            ),
+            Identifier(
+                "x",
+            ),
+            Identifier(
+                "y",
+            ),
+            ParenClose,
+            ParenClose,
+        ],
+    ),
+)
+
+(crate defun func (:t x->:t y->:t)->:t x)
+Ok(
+    Tokens(
+        [
+            ParenOpen,
+            Identifier(
+                "crate",
+            ),
+            Keyword(
+                Defun,
+            ),
+            Identifier(
+                "func",
+            ),
+            ParenOpen,
+            Generic(
+                "t",
+            ),
+            Identifier(
+                "x",
+            ),
+            Keyword(
+                Arrow,
+            ),
+            Generic(
+                "t",
+            ),
+            Identifier(
+                "y",
+            ),
+            Keyword(
+                Arrow,
+            ),
+            Generic(
+                "t",
+            ),
+            ParenClose,
+            Keyword(
+                Arrow,
+            ),
+            Generic(
+                "t",
+            ),
+            Identifier(
+                "x",
+            ),
+            ParenClose,
+        ],
+    ),
+)
+
+(defun func ()-><[i32] string> (func))
+Ok(
+    Tokens(
+        [
+            ParenOpen,
+            Keyword(
+                Defun,
+            ),
+            Identifier(
+                "func",
+            ),
+            ParenOpen,
+            ParenClose,
+            Keyword(
+                Arrow,
+            ),
+            AngleBracketOpen,
+            BracketOpen,
+            Type(
+                I32,
+            ),
+            BracketClose,
+            Type(
+                String,
+            ),
+            AngleBracketClose,
+            ParenOpen,
+            Identifier(
+                "func",
+            ),
+            ParenClose,
+            ParenClose,
+        ],
+    ),
+)

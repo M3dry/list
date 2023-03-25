@@ -24,6 +24,7 @@ enum TokenOrParser {
 #[derive(Subcommand, Debug)]
 enum ParserType {
     File { path: String },
+    Enum { path: String },
     Struct { path: String },
     Function { path: String },
     Expression { path: String },
@@ -34,6 +35,7 @@ impl ParserType {
         let tokens = input(file, self.get_path());
         match self {
             Self::File { .. } => lP::file(tokens),
+            Self::Enum { .. } => lP::r#enum(tokens),
             Self::Struct { .. } => lP::r#struct(tokens),
             Self::Function { .. } => lP::r#function(tokens),
             Self::Expression { .. } => lP::r#expression(tokens),
@@ -42,7 +44,7 @@ impl ParserType {
 
     fn get_path(&self) -> &String {
         match self {
-            Self::File { path } | Self::Struct { path } | Self::Function { path } | Self::Expression { path } => path,
+            Self::File { path } | Self::Enum { path } | Self::Struct { path } | Self::Function { path } | Self::Expression { path } => path,
         }
     }
 }

@@ -1,0 +1,213 @@
+---
+source: src/tokenizer.rs
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{:#?}\", Tokens :: from_str(line)))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+---
+(+ 4 1)
+Ok(
+    Tokens(
+        [
+            ParenOpen,
+            Identifier(
+                "+",
+            ),
+            Literal(
+                Int(
+                    false,
+                    4,
+                ),
+            ),
+            Literal(
+                Int(
+                    false,
+                    1,
+                ),
+            ),
+            ParenClose,
+        ],
+    ),
+)
+
+(= 10 xy)
+Ok(
+    Tokens(
+        [
+            ParenOpen,
+            Identifier(
+                "=",
+            ),
+            Literal(
+                Int(
+                    false,
+                    10,
+                ),
+            ),
+            Identifier(
+                "xy",
+            ),
+            ParenClose,
+        ],
+    ),
+)
+
+(func 100 (+ 4 10))
+Ok(
+    Tokens(
+        [
+            ParenOpen,
+            Identifier(
+                "func",
+            ),
+            Literal(
+                Int(
+                    false,
+                    100,
+                ),
+            ),
+            ParenOpen,
+            Identifier(
+                "+",
+            ),
+            Literal(
+                Int(
+                    false,
+                    4,
+                ),
+            ),
+            Literal(
+                Int(
+                    false,
+                    10,
+                ),
+            ),
+            ParenClose,
+            ParenClose,
+        ],
+    ),
+)
+
+(= (func 69 (+ 1 10)) (xyzfunc 100) (func 10 100))
+Ok(
+    Tokens(
+        [
+            ParenOpen,
+            Identifier(
+                "=",
+            ),
+            ParenOpen,
+            Identifier(
+                "func",
+            ),
+            Literal(
+                Int(
+                    false,
+                    69,
+                ),
+            ),
+            ParenOpen,
+            Identifier(
+                "+",
+            ),
+            Literal(
+                Int(
+                    false,
+                    1,
+                ),
+            ),
+            Literal(
+                Int(
+                    false,
+                    10,
+                ),
+            ),
+            ParenClose,
+            ParenClose,
+            ParenOpen,
+            Identifier(
+                "xyzfunc",
+            ),
+            Literal(
+                Int(
+                    false,
+                    100,
+                ),
+            ),
+            ParenClose,
+            ParenOpen,
+            Identifier(
+                "func",
+            ),
+            Literal(
+                Int(
+                    false,
+                    10,
+                ),
+            ),
+            Literal(
+                Int(
+                    false,
+                    100,
+                ),
+            ),
+            ParenClose,
+            ParenClose,
+        ],
+    ),
+)
+
+((lambda (x y z) (= x y z)) 10 20 10)
+Ok(
+    Tokens(
+        [
+            ParenOpen,
+            ParenOpen,
+            Keyword(
+                Lambda,
+            ),
+            ParenOpen,
+            Identifier(
+                "x",
+            ),
+            Identifier(
+                "y",
+            ),
+            Identifier(
+                "z",
+            ),
+            ParenClose,
+            ParenOpen,
+            Identifier(
+                "=",
+            ),
+            Identifier(
+                "x",
+            ),
+            Identifier(
+                "y",
+            ),
+            Identifier(
+                "z",
+            ),
+            ParenClose,
+            ParenClose,
+            Literal(
+                Int(
+                    false,
+                    10,
+                ),
+            ),
+            Literal(
+                Int(
+                    false,
+                    20,
+                ),
+            ),
+            Literal(
+                Int(
+                    false,
+                    10,
+                ),
+            ),
+            ParenClose,
+        ],
+    ),
+)

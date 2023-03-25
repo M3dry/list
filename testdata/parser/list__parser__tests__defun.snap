@@ -1,0 +1,138 @@
+---
+source: src/parser.rs
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{:#?}\", Defun::try_from\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+---
+(defun func (x->i32)->string "hello")
+Ok(
+    Defun {
+        scope: File,
+        name: "func",
+        args: ArgsTyped {
+            generics: [],
+            args: [
+                (
+                    "x",
+                    Builtin(
+                        I32,
+                    ),
+                ),
+            ],
+        },
+        return_type: Builtin(
+            String,
+        ),
+        body: Literal(
+            String(
+                "hello",
+            ),
+        ),
+    },
+)
+
+(pub defun func (x->i32 y->i128)->i64 (+ x y))
+Ok(
+    Defun {
+        scope: Full,
+        name: "func",
+        args: ArgsTyped {
+            generics: [],
+            args: [
+                (
+                    "x",
+                    Builtin(
+                        I32,
+                    ),
+                ),
+                (
+                    "y",
+                    Builtin(
+                        I128,
+                    ),
+                ),
+            ],
+        },
+        return_type: Builtin(
+            I64,
+        ),
+        body: Call(
+            Call {
+                func: Right(
+                    "+",
+                ),
+                params: [
+                    Identifier(
+                        "x",
+                    ),
+                    Identifier(
+                        "y",
+                    ),
+                ],
+            },
+        ),
+    },
+)
+
+(crate defun func (:t x->:t y->:t)->:t x)
+Ok(
+    Defun {
+        scope: Crate,
+        name: "func",
+        args: ArgsTyped {
+            generics: [
+                "t",
+            ],
+            args: [
+                (
+                    "x",
+                    Generic(
+                        "t",
+                    ),
+                ),
+                (
+                    "y",
+                    Generic(
+                        "t",
+                    ),
+                ),
+            ],
+        },
+        return_type: Generic(
+            "t",
+        ),
+        body: Identifier(
+            "x",
+        ),
+    },
+)
+
+(defun func ()-><[i32] string> (func))
+Ok(
+    Defun {
+        scope: File,
+        name: "func",
+        args: ArgsTyped {
+            generics: [],
+            args: [],
+        },
+        return_type: Touple(
+            [
+                Array(
+                    Builtin(
+                        I32,
+                    ),
+                ),
+                Builtin(
+                    String,
+                ),
+            ],
+        ),
+        body: Call(
+            Call {
+                func: Right(
+                    "func",
+                ),
+                params: [],
+            },
+        ),
+    },
+)

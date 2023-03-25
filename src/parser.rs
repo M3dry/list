@@ -1,19 +1,12 @@
+use std::collections::VecDeque;
+use std::ops::Index;
+
 use either::Either;
-use peek_nth::{IteratorExt, PeekableNth};
 
 use crate::pattern::{PatternToken, PatternTree};
 use crate::tokenizer::{BuiltinTypes, Keywords, Literals, Token, Tokens};
 
 macro_rules! error {
-    ($initial:literal, $err:expr$(,)?) => {
-        ParserError {
-            stack: vec![ParserErrorStack {
-                name: $initial,
-                location: (line!(), column!()),
-            }],
-            err: $err,
-        }
-    };
     ($error:expr, $name:literal) => {
         $error.map_err(|mut err| {
             err.stack.push(ParserErrorStack {
@@ -22,6 +15,15 @@ macro_rules! error {
             });
             err
         })
+    };
+    ($initial:expr, $err:expr$(,)?) => {
+        ParserError {
+            stack: vec![ParserErrorStack {
+                name: $initial,
+                location: (line!(), column!()),
+            }],
+            err: $err,
+        }
     };
 }
 
@@ -39,7 +41,7 @@ impl TryFrom<&mut Parser> for File {
         let mut structs = vec![];
 
         loop {
-            let peek = value.peek_nth(1);
+            let peek = value.nth(1);
 
             if peek.is_none() {
                 break;
@@ -76,9 +78,7 @@ impl TryFrom<&mut Parser> for Struct {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value
-            .next()
-            .ok_or(error!("Struct", format!("Expected more tokens")))?;
+        let next = value.pop_front_err("Struct", "Expected more tokens")?;
         if next != Token::ParenOpen {
             return Err(error!(
                 "Struct",
@@ -86,9 +86,7 @@ impl TryFrom<&mut Parser> for Struct {
             ));
         }
 
-        let next = value
-            .next()
-            .ok_or(error!("Struct", format!("Expected more tokens")))?;
+        let next = value.pop_front_err("Struct", "Expected more tokens")?;
         if next != Token::Keyword(Keywords::Struct) {
             return Err(error!(
                 "Struct",
@@ -96,9 +94,7 @@ impl TryFrom<&mut Parser> for Struct {
             ));
         }
 
-        let next = value
-            .next()
-            .ok_or(error!("Struct", format!("Expected more tokens")))?;
+        let next = value.pop_front_err("Struct", "Expected more tokens")?;
         let name = if let Token::Identifier(iden) = next {
             iden
         } else {
@@ -112,15 +108,17 @@ impl TryFrom<&mut Parser> for Struct {
 
         loop {
             let peek = value
-                .peek()
+                .first()
                 .ok_or(error!("Struct", format!("Expected more tokens")))?;
 
             if let Token::Generic(_) = peek {
-                generics.push(if let Token::Generic(generic) = value.next().unwrap() {
-                    generic
-                } else {
-                    panic!("wtf")
-                })
+                generics.push(
+                    if let Token::Generic(generic) = value.pop_front().unwrap() {
+                        generic
+                    } else {
+                        panic!("wtf")
+                    },
+                )
             } else {
                 break;
             }
@@ -128,9 +126,7 @@ impl TryFrom<&mut Parser> for Struct {
 
         let fields = error!(StructFields::try_from(&mut *value), "Struct")?;
 
-        let next = value
-            .next()
-            .ok_or(error!("Struct", format!("Expected more tokens")))?;
+        let next = value.pop_front_err("Struct", "Expected more tokens")?;
         if next != Token::ParenClose {
             return Err(error!(
                 "Struct",
@@ -153,9 +149,7 @@ impl TryFrom<&mut Parser> for StructFields {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value
-            .next()
-            .ok_or(error!("StructFields", format!("Expected more tokens")))?;
+        let next = value.pop_front_err("StructFields", "Expected more tokens")?;
         if next != Token::CurlyOpen {
             return Err(error!(
                 "StructFields",
@@ -167,10 +161,10 @@ impl TryFrom<&mut Parser> for StructFields {
 
         loop {
             let peek = value
-                .peek()
+                .first()
                 .ok_or(error!("StructFields", format!("Expected more tokens")))?;
             if peek == &Token::CurlyClose {
-                value.next();
+                value.pop_front();
                 break;
             }
 
@@ -191,15 +185,11 @@ impl TryFrom<&mut Parser> for StructField {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value
-            .next()
-            .ok_or(error!("StructField", format!("Expected more tokens")))?;
+        let next = value.pop_front_err("StructField", "Expected more tokens")?;
         if let Token::Identifier(iden) = next {
             let name = iden;
 
-            let next = value
-                .next()
-                .ok_or(error!("StructField", format!("Expected more tokens")))?;
+            let next = value.pop_front_err("StructField", "Expected more tokens")?;
             if next != Token::Keyword(Keywords::Arrow) {
                 return Err(error!(
                     "StructField",
@@ -230,16 +220,12 @@ impl TryFrom<&mut Parser> for Enum {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value
-            .next()
-            .ok_or(error!("Enum", format!("Expected more tokens")))?;
+        let next = value.pop_front_err("Enum", "Expected more tokens")?;
         if next != Token::ParenOpen {
             return Err(error!("Enum", format!("Expected ParenOpen, got {next:#?}")));
         }
 
-        let next = value
-            .next()
-            .ok_or(error!("Enum", format!("Expected more tokens")))?;
+        let next = value.pop_front_err("Enum", "Expected more tokens")?;
         if next != Token::Keyword(Keywords::Enum) {
             return Err(error!(
                 "Enum",
@@ -247,9 +233,7 @@ impl TryFrom<&mut Parser> for Enum {
             ));
         }
 
-        let next = value
-            .next()
-            .ok_or(error!("Enum", format!("Expected more tokens")))?;
+        let next = value.pop_front_err("Enum", "Expected more tokens")?;
         let name = if let Token::Identifier(iden) = next {
             iden
         } else {
@@ -263,15 +247,17 @@ impl TryFrom<&mut Parser> for Enum {
 
         loop {
             let peek = value
-                .peek()
+                .first()
                 .ok_or(error!("Enum", format!("Expected more tokens")))?;
 
             if let Token::Generic(_) = peek {
-                generics.push(if let Token::Generic(generic) = value.next().unwrap() {
-                    generic
-                } else {
-                    panic!("wtf")
-                })
+                generics.push(
+                    if let Token::Generic(generic) = value.pop_front().unwrap() {
+                        generic
+                    } else {
+                        panic!("wtf")
+                    },
+                )
             } else {
                 break;
             }
@@ -281,10 +267,10 @@ impl TryFrom<&mut Parser> for Enum {
 
         loop {
             let peek = value
-                .peek()
+                .first()
                 .ok_or(error!("Enum", format!("Expected more tokens")))?;
             if peek == &Token::ParenClose {
-                value.next();
+                value.pop_front();
                 break;
             }
 
@@ -310,7 +296,60 @@ impl TryFrom<&mut Parser> for Variant {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        todo!()
+        match value.pop_front_err("Variant", "Expected more tokens")? {
+            Token::Identifier(iden) => Ok(Variant::Simple(iden)),
+            Token::ParenOpen => {
+                let name = match value.pop_front_err("Variant", "Expected more tokens")? {
+                    Token::Identifier(iden) => iden,
+                    token => {
+                        return Err(error!(
+                            "Variant",
+                            format!("Expected identifier, got {token:#?}")
+                        ))
+                    }
+                };
+
+                match value
+                    .first()
+                    .ok_or(error!("Variant", format!("Expected more tokens")))?
+                {
+                    &Token::ParenClose => {
+                        value.pop_front();
+                        return Ok(Variant::Simple(name));
+                    }
+                    &Token::CurlyOpen => {
+                        let fields = error!(StructFields::try_from(&mut *value), "Variant")?;
+
+                        match value.pop_front_err("Variant", "Expected more tokens")? {
+                            Token::ParenClose => Ok(Variant::Struct(name, fields)),
+                            token => Err(error!("Variant", format!("Expected ParenClose, got {token:#?}"))),
+                        }
+                    },
+                    _ => {
+                        let mut r#types = vec![];
+
+                        loop {
+                            let peek = value
+                                .first()
+                                .ok_or(error!("Variant", format!("Expected more tokens")))?;
+
+                            if peek == &Token::ParenClose {
+                                value.pop_front();
+                                break;
+                            }
+
+                            r#types.push(error!(Type::try_from(&mut *value), "Variant")?)
+                        }
+
+                        Ok(Variant::WithType(name, r#types))
+                    }
+                }
+            }
+            token => Err(error!(
+                "Variant",
+                format!("Expected ParenOpen or identifier, got {token:#?}")
+            )),
+        }
     }
 }
 
@@ -327,9 +366,7 @@ impl TryFrom<&mut Parser> for Defun {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value
-            .next()
-            .ok_or(error!("Defun", format!("Expected more tokens")))?;
+        let next = value.pop_front_err("Defun", "Expected more tokens")?;
         if next != Token::ParenOpen {
             return Err(error!(
                 "Defun",
@@ -339,9 +376,7 @@ impl TryFrom<&mut Parser> for Defun {
 
         let scope = Scope::try_from(&mut *value).unwrap_or(Scope::File);
 
-        let next = value
-            .next()
-            .ok_or(error!("Defun", format!("Expected more tokens"),))?;
+        let next = value.pop_front_err("Defun", "Expected more tokens")?;
         if next != Token::Keyword(Keywords::Defun) {
             return Err(error!(
                 "Defun",
@@ -349,9 +384,7 @@ impl TryFrom<&mut Parser> for Defun {
             ));
         }
 
-        let next = value
-            .next()
-            .ok_or(error!("Defun name", format!("Expected more tokens"),))?;
+        let next = value.pop_front_err("Defun", "Expected more tokens")?;
         let name = if let Token::Identifier(iden) = next {
             iden
         } else {
@@ -363,9 +396,7 @@ impl TryFrom<&mut Parser> for Defun {
 
         let args = error!(ArgsTyped::try_from(&mut *value), "Defun")?;
 
-        let next = value
-            .next()
-            .ok_or(error!("Defun arrow", format!("Expected more tokens"),))?;
+        let next = value.pop_front_err("Defun", "Expected more tokens")?;
         if next != Token::Keyword(Keywords::Arrow) {
             return Err(error!(
                 "Defun arrow",
@@ -398,49 +429,16 @@ impl TryFrom<&mut Parser> for Scope {
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
         let next = value
-            .peek()
+            .first()
             .ok_or(error!("Scope", format!("Expected more tokens")))?;
         match next {
-            Token::ParenOpen => {
-                value.next();
-                let next = value
-                    .next()
-                    .ok_or(error!("Scope", format!("Expected more tokens")))?;
-                if let Token::Identifier(iden) = next {
-                    if &iden[..] != "pub" {
-                        return Err(error!("Scope iden", format!("Expected pub, got {iden:#?}"),));
-                    }
-
-                    let peek = value
-                        .peek()
-                        .ok_or(error!("Scope crate", format!("Expected more tokens"),))?;
-                    if *peek == Token::ParenClose {
-                        Ok(Scope::Full)
-                    } else if let Token::Identifier(iden) = value.next().unwrap() {
-                        if &iden[..] == "crate" {
-                            Ok(Scope::Crate)
-                        } else {
-                            Err(error!(
-                                "Scope crate",
-                                format!("Expected crate, got {iden:#?}"),
-                            ))
-                        }
-                    } else {
-                        Err(error!(
-                            "Scope",
-                            format!("Expected identifier, got {:#?}", value.next().unwrap()),
-                        ))
-                    }
-                } else {
-                    Err(error!(
-                        "Scope",
-                        format!("Expected identifier, got {next:#?}"),
-                    ))
-                }
-            }
             Token::Identifier(iden) => match &iden[..] {
+                "crate" => {
+                    value.pop_front();
+                    Ok(Scope::Crate)
+                }
                 "pub" => {
-                    value.next();
+                    value.pop_front();
                     Ok(Scope::Full)
                 }
                 iden => Err(error!("Scope iden", format!("Expected pub, got {iden:#?}"),)),
@@ -459,26 +457,52 @@ enum Type {
     Generic(String),
     Custom(String),
     Complex(String, Vec<Type>),
+    Array(Box<Type>),
+    Touple(Vec<Type>),
 }
 
 impl TryFrom<&mut Parser> for Type {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value
-            .next()
-            .ok_or(error!("Type", format!("Expected more tokens")))?;
-        match next {
+        match value.pop_front_err("Type", "Expected more tokens")? {
             Token::Type(builtin) => Ok(Type::Builtin(builtin)),
             Token::Generic(generic) => Ok(Type::Generic(generic)),
             Token::Identifier(iden) => Ok(Type::Custom(iden)),
+            Token::BracketOpen => {
+                let r#type = Box::new(error!(Type::try_from(&mut *value), "Type")?);
+
+                match value.pop_front_err("Type", "Expected more tokens")? {
+                    Token::BracketClose => Ok(Type::Array(r#type)),
+                    token => Err(error!(
+                        "Type",
+                        format!("Expected BracketClose, got {token:#?}")
+                    )),
+                }
+            }
+            Token::AngleBracketOpen => {
+                let mut types = vec![];
+
+                loop {
+                    let peek = value
+                        .first()
+                        .ok_or(error!("Type", format!("Expected more tokens")))?;
+
+                    if peek == &Token::AngleBracketClose {
+                        value.pop_front();
+                        break;
+                    }
+
+                    types.push(error!(Type::try_from(&mut *value), "Type")?);
+                }
+
+                Ok(Type::Touple(types))
+            }
             Token::ParenOpen => {
-                let next = value
-                    .next()
-                    .ok_or(error!("Type complex", format!("Expected more tokens"),))?;
+                let next = value.pop_front_err("Type", "Expected more tokens")?;
                 match next {
                     Token::Type(builtin) => {
-                        if value.next() != Some(Token::ParenClose) {
+                        if value.pop_front() != Some(Token::ParenClose) {
                             Err(error!(
                                 "Type complex/builtin",
                                 format!("Expected an identifier, got a builtin type"),
@@ -490,10 +514,10 @@ impl TryFrom<&mut Parser> for Type {
                     Token::Identifier(iden) => {
                         let mut types = vec![];
 
-                        while value.peek() != Some(&Token::ParenClose) {
+                        while value.first() != Some(&Token::ParenClose) {
                             types.push(error!(Type::try_from(&mut *value), "Type")?);
                         }
-                        value.next();
+                        value.pop_front();
 
                         Ok(Type::Complex(iden, types))
                     }
@@ -503,9 +527,9 @@ impl TryFrom<&mut Parser> for Type {
                     )),
                 }
             }
-            _ => Err(error!(
+            token => Err(error!(
                 "Type",
-                format!("Expected type, indentifier or OpenParen, got {next:#?}"),
+                format!("Expected type, indentifier or OpenParen, got {token:#?}"),
             )),
         }
     }
@@ -527,13 +551,13 @@ impl TryFrom<&mut Parser> for Exp {
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
         let peek = value
-            .peek()
+            .first()
             .ok_or(error!("Exp", format!("Expected more tokens")))?;
 
         match *peek {
             Token::ParenOpen => {
                 match value
-                    .peek_nth(1)
+                    .nth(1)
                     .ok_or(error!("Exp paren", format!("Expected more tokens"),))?
                 {
                     Token::Keyword(Keywords::If) => {
@@ -552,9 +576,9 @@ impl TryFrom<&mut Parser> for Exp {
                         "Exp"
                     )?))),
                     Token::Literal(_) => {
-                        value.next();
+                        value.pop_front();
                         Ok(Exp::Literal(
-                            if let Token::Literal(literal) = value.next().unwrap() {
+                            if let Token::Literal(literal) = value.pop_front().unwrap() {
                                 literal
                             } else {
                                 panic!("wtf")
@@ -562,8 +586,8 @@ impl TryFrom<&mut Parser> for Exp {
                         ))
                     }
                     Token::Identifier(_) => {
-                        value.next();
-                        let func = if let Token::Identifier(iden) = value.next().unwrap() {
+                        value.pop_front();
+                        let func = if let Token::Identifier(iden) = value.pop_front().unwrap() {
                             iden
                         } else {
                             panic!("wtf")
@@ -572,11 +596,11 @@ impl TryFrom<&mut Parser> for Exp {
 
                         loop {
                             let peek = value
-                                .peek()
+                                .first()
                                 .ok_or(error!("Exp call/iden", format!("Expected more tokens"),))?;
 
                             if *peek == Token::ParenClose {
-                                value.next();
+                                value.pop_front();
                                 break;
                             } else {
                                 params.push(error!(Exp::try_from(&mut *value), "Exp")?)
@@ -589,17 +613,17 @@ impl TryFrom<&mut Parser> for Exp {
                         })))
                     }
                     Token::ParenOpen => {
-                        value.next();
+                        value.pop_front();
                         let lambda = error!(Lambda::try_from(&mut *value), "Exp call/lambda")?;
                         let mut params = vec![];
 
                         loop {
                             let peek = value
-                                .peek()
+                                .first()
                                 .ok_or(error!("Exp call/iden", format!("Expected more tokens"),))?;
 
                             if *peek == Token::ParenClose {
-                                value.next();
+                                value.pop_front();
                                 break;
                             } else {
                                 params.push(error!(Exp::try_from(&mut *value), "Exp")?)
@@ -615,7 +639,7 @@ impl TryFrom<&mut Parser> for Exp {
                 }
             }
             Token::Identifier(_) => {
-                let iden = value.next().unwrap();
+                let iden = value.pop_front().unwrap();
                 if let Token::Identifier(iden) = iden {
                     Ok(Exp::Identifier(iden))
                 } else {
@@ -623,7 +647,7 @@ impl TryFrom<&mut Parser> for Exp {
                 }
             }
             _ => {
-                let next = value.next().unwrap();
+                let next = value.pop_front().unwrap();
                 if let Token::Literal(literal) = next {
                     Ok(Exp::Literal(literal))
                 } else {
@@ -654,16 +678,12 @@ impl TryFrom<&mut Parser> for If {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value
-            .next()
-            .ok_or(error!("If", format!("Expected more tokens")))?;
+        let next = value.pop_front_err("If", "Expected more tokens")?;
         if next != Token::ParenOpen {
             return Err(error!("If", format!("Expected ParenOpen, got {next:#?}"),));
         }
 
-        let next = value
-            .next()
-            .ok_or(error!("If", format!("Expected more tokens")))?;
+        let next = value.pop_front_err("If", "Expected more tokens")?;
         if next != Token::Keyword(Keywords::If) {
             return Err(error!("If", format!("Expected If keyword, got {next:#?}"),));
         }
@@ -690,9 +710,7 @@ impl TryFrom<&mut Parser> for Match {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value
-            .next()
-            .ok_or(error!("Match", format!("Expected more tokens")))?;
+        let next = value.pop_front_err("Match", "Expected more tokens")?;
         if next != Token::ParenOpen {
             return Err(error!(
                 "Match",
@@ -700,9 +718,7 @@ impl TryFrom<&mut Parser> for Match {
             ));
         }
 
-        let next = value
-            .next()
-            .ok_or(error!("Match", format!("Expected more tokens")))?;
+        let next = value.pop_front_err("Match", "Expected more tokens")?;
         if next != Token::Keyword(Keywords::Match) {
             return Err(error!(
                 "Match",
@@ -715,11 +731,11 @@ impl TryFrom<&mut Parser> for Match {
 
         loop {
             let peek = value
-                .peek()
+                .first()
                 .ok_or(error!("Match branches", format!("Expected more tokens"),))?;
 
             if *peek == Token::ParenClose {
-                value.next();
+                value.pop_front();
                 break;
             } else {
                 branches.push(error!(Branch::try_from(&mut *value), "Match")?);
@@ -741,9 +757,7 @@ impl TryFrom<&mut Parser> for Branch {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value
-            .next()
-            .ok_or(error!("Branch", format!("Expected more tokens")))?;
+        let next = value.pop_front_err("Branch", "Expected more tokens")?;
         if next != Token::ParenOpen {
             return Err(error!(
                 "Branch",
@@ -751,9 +765,7 @@ impl TryFrom<&mut Parser> for Branch {
             ));
         }
 
-        let next = value
-            .next()
-            .ok_or(error!("Branch single?", format!("Expected more tokens"),))?;
+        let next = value.pop_front_err("Branch", "Expected more tokens")?;
         let ret = match next {
             Token::Literal(literal) => Ok(Branch {
                 pattern: PatternTree::new(PatternToken::Literal(literal)),
@@ -769,27 +781,20 @@ impl TryFrom<&mut Parser> for Branch {
                 let mut tokens = vec![];
 
                 while !matches!(
-                    value.peek(),
+                    value.first(),
                     Some(Token::ParenClose | Token::Keyword(Keywords::If))
                 ) {
-                    tokens.push(value.next().unwrap())
+                    tokens.push(value.pop_front().unwrap())
                 }
 
-                let pattern = error!(
-                    PatternTree::try_from(&mut Parser {
-                        tokens: tokens.into_iter().peekable_nth(),
-                    }),
-                    "Branch"
-                )?;
+                let pattern = error!(PatternTree::try_from(&mut *value), "Branch")?;
 
-                let next = value
-                    .next()
-                    .ok_or(error!("Branch if?", format!("Expected more tokens"),))?;
+                let next = value.pop_front_err("Branch", "Expected more tokens")?;
                 match next {
                     Token::Keyword(Keywords::If) => {
                         let check =
                             error!(Exp::try_from(&mut *value), "Branch paren/if-condition")?;
-                        let next = value.next().ok_or(error!(
+                        let next = value.pop_front().ok_or(error!(
                             "Branch paren/if/close",
                             format!("Expected more tokens"),
                         ))?;
@@ -818,9 +823,7 @@ impl TryFrom<&mut Parser> for Branch {
             _ => unreachable!(),
         };
 
-        let next = value
-            .next()
-            .ok_or(error!("Branch close", format!("Expected more tokens"),))?;
+        let next = value.pop_front_err("Branch close", "Expected more tokens")?;
         if next != Token::ParenClose {
             Err(error!(
                 "Branch close",
@@ -842,16 +845,12 @@ impl TryFrom<&mut Parser> for Let {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value
-            .next()
-            .ok_or(error!("Let", format!("Expected more tokens")))?;
+        let next = value.pop_front_err("Let", "Expected more tokens")?;
         if next != Token::ParenOpen {
             return Err(error!("Let", format!("Expected ParenOpen, got {next:#?}"),));
         }
 
-        let next = value
-            .next()
-            .ok_or(error!("Let", format!("Expected more tokens")))?;
+        let next = value.pop_front_err("Let", "Expected more tokens")?;
         if next != Token::Keyword(Keywords::Let) {
             return Err(error!(
                 "Let keyword",
@@ -862,23 +861,21 @@ impl TryFrom<&mut Parser> for Let {
         let mut vars = vec![];
 
         if let Token::Identifier(_) = value
-            .peek_nth(1)
+            .nth(1)
             .ok_or(error!("Let var", format!("Expected more tokens")))?
         {
-            value.next();
-            let iden = if let Token::Identifier(iden) = value.next().unwrap() {
+            value.pop_front();
+            let iden = if let Token::Identifier(iden) = value.pop_front().unwrap() {
                 iden
             } else {
                 panic!("this shouldn't happen")
             };
 
             vars.push((iden, Exp::try_from(&mut *value)?));
-            value.next();
-        } else if value.next().unwrap() == Token::ParenOpen {
+            value.pop_front();
+        } else if value.pop_front().unwrap() == Token::ParenOpen {
             loop {
-                let next = value
-                    .next()
-                    .ok_or(error!("Let vars", format!("Expected more tokens"),))?;
+                let next = value.pop_front_err("Let vars", "Expected more tokens")?;
                 if next == Token::ParenClose {
                     break;
                 }
@@ -889,9 +886,7 @@ impl TryFrom<&mut Parser> for Let {
                     ));
                 }
 
-                let next = value
-                    .next()
-                    .ok_or(error!("Let vars", format!("Expected more tokens"),))?;
+                let next = value.pop_front_err("Let vars", "Expected more tokens")?;
                 let iden = if let Token::Identifier(iden) = next {
                     iden
                 } else {
@@ -903,9 +898,7 @@ impl TryFrom<&mut Parser> for Let {
 
                 let exp = Exp::try_from(&mut *value)?;
 
-                let next = value
-                    .next()
-                    .ok_or(error!("Let vars", format!("Expected more tokens"),))?;
+                let next = value.pop_front_err("Let vars", "Expected more tokens")?;
                 if next != Token::ParenClose {
                     return Err(error!(
                         "Let vars/close",
@@ -934,9 +927,7 @@ impl TryFrom<&mut Parser> for Lambda {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value
-            .next()
-            .ok_or(error!("Lambda", format!("Expected more tokens")))?;
+        let next = value.pop_front_err("Lambda", "Expected more tokens")?;
         if next != Token::ParenOpen {
             return Err(error!(
                 "Lambda",
@@ -944,9 +935,7 @@ impl TryFrom<&mut Parser> for Lambda {
             ));
         }
 
-        let next = value
-            .next()
-            .ok_or(error!("Lambda", format!("Expected more tokens")))?;
+        let next = value.pop_front_err("Lambda", "Expected more tokens")?;
         if next != Token::Keyword(Keywords::Lambda) {
             return Err(error!(
                 "Lambda",
@@ -957,9 +946,7 @@ impl TryFrom<&mut Parser> for Lambda {
         let args = error!(Args::try_from(&mut *value), "Lambda")?;
         let body = error!(Exp::try_from(&mut *value), "Lambda")?;
 
-        let next = value
-            .next()
-            .ok_or(error!("Lambda", format!("Expected more tokens")))?;
+        let next = value.pop_front_err("Lambda", "Expected more tokens")?;
         if next != Token::ParenClose {
             return Err(error!(
                 "Lambda",
@@ -984,10 +971,7 @@ impl TryFrom<&mut Parser> for ArgsTyped {
         let mut args = vec![];
         let mut generics = vec![];
 
-        let next = value.next().ok_or(error!(
-            "ArgsTyped OpenParen",
-            format!("Expected more tokens"),
-        ))?;
+        let next = value.pop_front_err("ArgsTyped", "Expected more tokens")?;
         if next != Token::ParenOpen {
             return Err(error!(
                 "ArgsTyped",
@@ -995,8 +979,8 @@ impl TryFrom<&mut Parser> for ArgsTyped {
             ));
         }
 
-        while let Some(Token::Generic(_)) = value.peek() {
-            if let Some(Token::Generic(generic)) = value.next() {
+        while let Some(Token::Generic(_)) = value.first() {
+            if let Some(Token::Generic(generic)) = value.pop_front() {
                 generics.push(generic);
             } else {
                 panic!("wtf")
@@ -1004,8 +988,8 @@ impl TryFrom<&mut Parser> for ArgsTyped {
         }
 
         loop {
-            if value.peek() == Some(&Token::ParenClose) {
-                value.next();
+            if value.first() == Some(&Token::ParenClose) {
+                value.pop_front();
                 break;
             }
             let arg = error!(Arg::try_from(&mut *value), "ArgsTyped")?;
@@ -1032,17 +1016,15 @@ impl TryFrom<&mut Parser> for Args {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value
-            .next()
-            .ok_or(error!("Args", format!("Expected more tokens")))?;
+        let next = value.pop_front_err("Args", "Expected more tokens")?;
         if next != Token::ParenOpen {
             return Err(error!("Args", format!("Expected ParenOpen, got {next:#?}"),));
         }
 
         let mut args = vec![];
         loop {
-            if value.peek() == Some(&Token::ParenClose) {
-                value.next();
+            if value.first() == Some(&Token::ParenClose) {
+                value.pop_front();
                 break;
             }
             let arg = error!(Arg::try_from(&mut *value), "Args")?;
@@ -1072,9 +1054,7 @@ impl TryFrom<&mut Parser> for Arg {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value
-            .next()
-            .ok_or(error!("Arg", format!("Expected more tokens")))?;
+        let next = value.pop_front_err("Arg", "Expected more tokens")?;
         let name = match next {
             Token::Identifier(iden) => iden,
             Token::Generic(generic) => return Ok(Arg::Generic(generic)),
@@ -1086,11 +1066,11 @@ impl TryFrom<&mut Parser> for Arg {
             }
         };
 
-        let next = value.peek();
+        let next = value.first();
         if next != Some(&Token::Keyword(Keywords::Arrow)) {
             return Ok(Arg::Simple(name));
         }
-        value.next();
+        value.pop_front();
 
         let arg_type = error!(Type::try_from(&mut *value), "Arg type")?;
 
@@ -1129,7 +1109,7 @@ impl std::fmt::Display for ParserErrorStack {
 
 #[derive(Debug)]
 pub struct Parser {
-    tokens: PeekableNth<std::vec::IntoIter<Token>>,
+    tokens: VecDeque<Token>,
 }
 
 impl Parser {
@@ -1150,6 +1130,10 @@ impl Parser {
         format!("{:#?}", File::try_from(&mut Self::new(tokens)))
     }
 
+    pub fn r#enum(tokens: Tokens) -> String {
+        format!("{:#?}", Enum::try_from(&mut Self::new(tokens)))
+    }
+
     pub fn r#struct(tokens: Tokens) -> String {
         format!("{:#?}", Struct::try_from(&mut Self::new(tokens)))
     }
@@ -1164,19 +1148,74 @@ impl Parser {
 
     fn new(tokens: Tokens) -> Self {
         Self {
-            tokens: tokens.0.into_iter().peekable_nth(),
+            tokens: VecDeque::from(tokens.0),
         }
     }
 
-    fn peek(&mut self) -> Option<&Token> {
-        self.tokens.peek()
+    fn first(&mut self) -> Option<&Token> {
+        if self.tokens.len() > 0 {
+            Some(self.tokens.index(0))
+        } else {
+            None
+        }
     }
 
-    fn peek_nth(&mut self, nth: usize) -> Option<&Token> {
-        self.tokens.peek_nth(nth)
+    fn nth(&mut self, nth: usize) -> Option<&Token> {
+        if self.tokens.len() > nth {
+            Some(self.tokens.index(nth))
+        } else {
+            None
+        }
     }
 
-    fn next(&mut self) -> Option<Token> {
-        self.tokens.next()
+    fn pop_front_err(
+        &mut self,
+        func: &'static str,
+        err: &'static str,
+    ) -> Result<Token, ParserError> {
+        self.tokens.pop_front().ok_or(error!(func, err.to_string()))
     }
+
+    fn pop_front(&mut self) -> Option<Token> {
+        self.tokens.pop_front()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    macro_rules! snapshot {
+        ($name:tt, $func:expr, $path:tt) => {
+            #[test]
+            fn $name() {
+                let contents = include_str!($path);
+                let mut settings = insta::Settings::clone_current();
+                settings.set_snapshot_path("../testdata/parser/");
+                settings.bind(|| {
+                    insta::assert_snapshot!(contents
+                        .lines()
+                        .filter_map(|line| if line != "" {
+                            Some(format!(
+                                "{line}\n{:#?}",
+                                $func(&mut Parser::new(line.parse().unwrap()))
+                            ))
+                        } else {
+                            None
+                        })
+                        .collect::<Vec<String>>()
+                        .join("\n\n"));
+                });
+            }
+        };
+    }
+
+    snapshot!(test_calling, Exp::try_from, "../testdata/input/calling.lt");
+    snapshot!(test_if, If::try_from, "../testdata/input/if.lt");
+    //snapshot!(test_match, Match::try_from, "../testdata/input/match.lt");
+    snapshot!(test_defun, Defun::try_from, "../testdata/input/defun.lt");
+    snapshot!(test_lambda, Lambda::try_from, "../testdata/input/lambda.lt");
+    snapshot!(test_let, Let::try_from, "../testdata/input/let.lt");
+    snapshot!(test_struct, Struct::try_from, "../testdata/input/struct.lt");
+    snapshot!(test_enum, Enum::try_from, "../testdata/input/enum.lt");
 }

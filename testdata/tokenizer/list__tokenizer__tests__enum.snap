@@ -1,0 +1,110 @@
+---
+source: src/tokenizer.rs
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{:#?}\", Tokens :: from_str(line)))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+---
+(enum Hello Xy)
+Ok(
+    Tokens(
+        [
+            ParenOpen,
+            Keyword(
+                Enum,
+            ),
+            Identifier(
+                "Hello",
+            ),
+            Identifier(
+                "Xy",
+            ),
+            ParenClose,
+        ],
+    ),
+)
+
+(enum Hello (Xy))
+Ok(
+    Tokens(
+        [
+            ParenOpen,
+            Keyword(
+                Enum,
+            ),
+            Identifier(
+                "Hello",
+            ),
+            ParenOpen,
+            Identifier(
+                "Xy",
+            ),
+            ParenClose,
+            ParenClose,
+        ],
+    ),
+)
+
+(enum Hello :t (Xy) (Xz { x->:t y->i32 }) (Xx i32 <i32 [string]>))
+Ok(
+    Tokens(
+        [
+            ParenOpen,
+            Keyword(
+                Enum,
+            ),
+            Identifier(
+                "Hello",
+            ),
+            Generic(
+                "t",
+            ),
+            ParenOpen,
+            Identifier(
+                "Xy",
+            ),
+            ParenClose,
+            ParenOpen,
+            Identifier(
+                "Xz",
+            ),
+            CurlyOpen,
+            Identifier(
+                "x",
+            ),
+            Keyword(
+                Arrow,
+            ),
+            Generic(
+                "t",
+            ),
+            Identifier(
+                "y",
+            ),
+            Keyword(
+                Arrow,
+            ),
+            Type(
+                I32,
+            ),
+            CurlyClose,
+            ParenClose,
+            ParenOpen,
+            Identifier(
+                "Xx",
+            ),
+            Type(
+                I32,
+            ),
+            AngleBracketOpen,
+            Type(
+                I32,
+            ),
+            BracketOpen,
+            Type(
+                String,
+            ),
+            BracketClose,
+            AngleBracketClose,
+            ParenClose,
+            ParenClose,
+        ],
+    ),
+)

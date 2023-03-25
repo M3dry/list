@@ -1,0 +1,7 @@
+(defun func (x->i32)->string "hello")
+
+(pub defun func (x->i32 y->i128)->i64 (+ x y))
+
+(crate defun func (:t x->:t y->:t)->:t x)
+
+(defun func ()-><[i32] string> (func))
