@@ -1,8 +1,8 @@
 use std::collections::VecDeque;
 
-use crate::tokenizer::{Token, Keywords, Literals};
+use crate::tokenizer::{Keywords, Literals, Token};
 
-use super::{Parser, ParserError, ParserErrorStack, error, exp::Exp};
+use super::{error, exp::Exp, Parser, ParserError, ParserErrorStack};
 
 #[derive(Debug)]
 pub struct Match {
@@ -52,7 +52,13 @@ impl TryFrom<&mut Parser> for Match {
 
 impl ToString for Match {
     fn to_string(&self) -> String {
-        todo!()
+        format!(
+            "match {{{}}} {{{}}}",
+            self.against.to_string(),
+            self.branches.iter().fold(String::new(), |str, branch| {
+                format!("{str}\n{}", branch.to_string())
+            })
+        )
     }
 }
 
@@ -102,12 +108,10 @@ impl TryFrom<&mut Parser> for Branch {
 
                 match next {
                     Token::Keyword(Keywords::If) => {
-                        let check =
-                            error!(Exp::try_from(&mut *value), "Branch")?;
-                        let next = value.pop_front().ok_or(error!(
-                            "Branch",
-                            format!("Expected more tokens"),
-                        ))?;
+                        let check = error!(Exp::try_from(&mut *value), "Branch")?;
+                        let next = value
+                            .pop_front()
+                            .ok_or(error!("Branch", format!("Expected more tokens"),))?;
                         if next != Token::ParenClose {
                             return Err(error!(
                                 "Branch",
@@ -145,6 +149,21 @@ impl TryFrom<&mut Parser> for Branch {
     }
 }
 
+impl ToString for Branch {
+    fn to_string(&self) -> String {
+        format!(
+            "{}{} => {{{}}}",
+            self.pattern.to_string(),
+            if let Some(check) = &self.check {
+                format!(" if {}", check.to_string())
+            } else {
+                format!("")
+            },
+            self.ret.to_string()
+        )
+    }
+}
+
 #[derive(Debug)]
 enum Pattern {
     Literal(Literals),
@@ -161,13 +180,28 @@ impl TryFrom<VecDeque<Token>> for Pattern {
             match value.pop_back().unwrap() {
                 Token::Identifier(iden) => Ok(Pattern::Var(iden)),
                 Token::Literal(literal) => Ok(Pattern::Literal(literal)),
-                token => Err(error!("Pattern", format!("Expected an identifier, literal or parenClose, got {token:#?}"))),
+                token => Err(error!(
+                    "Pattern",
+                    format!("Expected an identifier, literal or parenClose, got {token:#?}")
+                )),
             }
         } else {
             match value.pop_front().unwrap() {
-                Token::Identifier(iden) => Ok(Pattern::Type(iden, Box::new(error!(Pattern::try_from(value), "Pattern")?))),
-                token => Err(error!("Pattern", format!("Expected an identifier, got {token:#?}")))
+                Token::Identifier(iden) => Ok(Pattern::Type(
+                    iden,
+                    Box::new(error!(Pattern::try_from(value), "Pattern")?),
+                )),
+                token => Err(error!(
+                    "Pattern",
+                    format!("Expected an identifier, got {token:#?}")
+                )),
             }
         }
+    }
+}
+
+impl ToString for Pattern {
+    fn to_string(&self) -> String {
+        format!("")
     }
 }
