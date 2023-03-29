@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use list::{parser::{Parser as lP, args::{Args as aArgs, ArgsTyped}, r#type::Type, file::File, r#enum::Enum, r#struct::Struct, defun::Defun, exp::Exp}, tokenizer::Tokens};
+use list::{parser::{Parser as lP, args::{Args as aArgs, ArgsTyped}, r#type::Type, file::File, r#enum::Enum, r#struct::Struct, r#match::Match, defun::Defun, exp::Exp}, tokenizer::Tokens};
 
 macro_rules! tostrrr {
     ($type:tt, $str:ident, $parser:ident) => {{
@@ -40,6 +40,7 @@ enum ParserType {
     File { path: String },
     Enum { path: String },
     Struct { path: String },
+    Match { path: String },
     Function { path: String },
     Expression { path: String },
 }
@@ -55,6 +56,7 @@ impl ParserType {
             Self::File { .. } => tostrrr!(File, to_string, parser),
             Self::Enum { .. } => tostrrr!(Enum, to_string, parser),
             Self::Struct { .. } => tostrrr!(Struct, to_string, parser),
+            Self::Match { .. } => tostrrr!(Match, to_string, parser),
             Self::Function { .. } => tostrrr!(Defun, to_string, parser),
             Self::Expression { .. } => tostrrr!(Exp, to_string, parser),
         }
@@ -68,6 +70,7 @@ impl ParserType {
             | Self::File { path }
             | Self::Enum { path }
             | Self::Struct { path }
+            | Self::Match { path }
             | Self::Function { path }
             | Self::Expression { path } => path,
         }

@@ -1,4 +1,6 @@
-use crate::{tokenizer::{Token, Keywords}, pattern::{PatternTree, PatternToken}};
+use std::collections::VecDeque;
+
+use crate::tokenizer::{Token, Keywords, Literals};
 
 use super::{Parser, ParserError, ParserErrorStack, error, exp::Exp};
 
@@ -34,7 +36,7 @@ impl TryFrom<&mut Parser> for Match {
         loop {
             let peek = value
                 .first()
-                .ok_or(error!("Match branches", format!("Expected more tokens"),))?;
+                .ok_or(error!("Match", format!("Expected more tokens"),))?;
 
             if *peek == Token::ParenClose {
                 value.pop_front();
@@ -56,7 +58,7 @@ impl ToString for Match {
 
 #[derive(Debug)]
 pub(crate) struct Branch {
-    pattern: PatternTree,
+    pattern: Pattern,
     check: Option<Exp>,
     ret: Exp,
 }
@@ -76,39 +78,39 @@ impl TryFrom<&mut Parser> for Branch {
         let next = value.pop_front_err("Branch", "Expected more tokens")?;
         let ret = match next {
             Token::Literal(literal) => Ok(Branch {
-                pattern: PatternTree::new(PatternToken::Literal(literal)),
+                pattern: Pattern::Literal(literal),
                 check: None,
                 ret: error!(Exp::try_from(&mut *value), "Branch literal")?,
             }),
             Token::Identifier(iden) => Ok(Branch {
-                pattern: PatternTree::new(PatternToken::Identifier(iden)),
+                pattern: Pattern::Var(iden),
                 check: None,
                 ret: error!(Exp::try_from(&mut *value), "Branch literal")?,
             }),
             Token::ParenOpen => {
-                let mut tokens = vec![];
+                let mut tokens = VecDeque::new();
 
                 while !matches!(
                     value.first(),
                     Some(Token::ParenClose | Token::Keyword(Keywords::If))
                 ) {
-                    tokens.push(value.pop_front().unwrap())
+                    tokens.push_back(value.pop_front().unwrap())
                 }
 
-                let pattern = error!(PatternTree::try_from(&mut *value), "Branch")?;
-
+                let pattern = error!(Pattern::try_from(tokens), "Branch")?;
                 let next = value.pop_front_err("Branch", "Expected more tokens")?;
+
                 match next {
                     Token::Keyword(Keywords::If) => {
                         let check =
-                            error!(Exp::try_from(&mut *value), "Branch paren/if-condition")?;
+                            error!(Exp::try_from(&mut *value), "Branch")?;
                         let next = value.pop_front().ok_or(error!(
-                            "Branch paren/if/close",
+                            "Branch",
                             format!("Expected more tokens"),
                         ))?;
                         if next != Token::ParenClose {
                             return Err(error!(
-                                "Branch paren/if/close",
+                                "Branch",
                                 format!("Expected ParenClose, got {next:#?}"),
                             ));
                         }
@@ -139,6 +141,33 @@ impl TryFrom<&mut Parser> for Branch {
             ))
         } else {
             ret
+        }
+    }
+}
+
+#[derive(Debug)]
+enum Pattern {
+    Literal(Literals),
+    Var(String),
+    Type(String, Box<Pattern>),
+    Enum,
+}
+
+impl TryFrom<VecDeque<Token>> for Pattern {
+    type Error = ParserError;
+
+    fn try_from(mut value: VecDeque<Token>) -> Result<Self, Self::Error> {
+        if value.len() == 1 {
+            match value.pop_back().unwrap() {
+                Token::Identifier(iden) => Ok(Pattern::Var(iden)),
+                Token::Literal(literal) => Ok(Pattern::Literal(literal)),
+                token => Err(error!("Pattern", format!("Expected an identifier, literal or parenClose, got {token:#?}"))),
+            }
+        } else {
+            match value.pop_front().unwrap() {
+                Token::Identifier(iden) => Ok(Pattern::Type(iden, Box::new(error!(Pattern::try_from(value), "Pattern")?))),
+                token => Err(error!("Pattern", format!("Expected an identifier, got {token:#?}")))
+            }
         }
     }
 }
