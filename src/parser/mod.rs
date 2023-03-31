@@ -20,6 +20,7 @@ macro_rules! error {
         $error.map_err(|mut err| {
             err.stack.push(ParserErrorStack {
                 name: $name,
+                file: file!(),
                 location: (line!(), column!()),
             });
             err
@@ -29,6 +30,7 @@ macro_rules! error {
         ParserError {
             stack: vec![ParserErrorStack {
                 name: $initial,
+                file: file!(),
                 location: (line!(), column!()),
             }],
             err: $err,
@@ -69,8 +71,6 @@ macro_rules! snapshot {
 pub(crate) use error;
 pub(crate) use snapshot;
 
-use self::{defun::Defun, exp::Exp, r#enum::Enum, r#struct::Struct};
-
 #[derive(Debug)]
 pub struct ParserError {
     stack: Vec<ParserErrorStack>,
@@ -91,6 +91,7 @@ impl std::fmt::Display for ParserError {
 #[derive(Debug)]
 pub(crate) struct ParserErrorStack {
     name: &'static str,
+    file: &'static str,
     location: (u32, u32),
 }
 
@@ -106,39 +107,6 @@ pub struct Parser {
 }
 
 impl Parser {
-    // pub fn parse(tokens: Tokens, exp: bool) -> Result<(), ParserError> {
-    //     let mut parser = Self {
-    //         tokens: tokens.0.into_iter().peekable_nth(),
-    //     };
-
-    //     if exp {
-    //         println!("{:#?}", Exp::try_from(&mut parser));
-    //     } else {
-    //         println!("{:#?}", File::try_from(&mut parser));
-    //     }
-    //     Ok(())
-    // }
-
-    // pub fn file(tokens: Tokens) -> Result<File, ParserError> {
-    //     File::try_from(&mut Self::new(tokens))
-    // }
-
-    // pub fn r#enum(tokens: Tokens) -> Result<Enum, ParserError> {
-    //     Enum::try_from(&mut Self::new(tokens))
-    // }
-
-    // pub fn r#struct(tokens: Tokens) -> Result<Struct, ParserError> {
-    //     Struct::try_from(&mut Self::new(tokens))
-    // }
-
-    // pub fn function(tokens: Tokens) -> Result<Defun, ParserError> {
-    //     Defun::try_from(&mut Self::new(tokens))
-    // }
-
-    // pub fn expression(tokens: Tokens) -> Result<Exp, ParserError> {
-    //     Exp::try_from(&mut Self::new(tokens))
-    // }
-
     pub fn new(tokens: Tokens) -> Self {
         Self {
             tokens: VecDeque::from(tokens.0),

@@ -1,4 +1,4 @@
-use crate::tokenizer::{BuiltinTypes, Token};
+use crate::tokenizer::{BuiltinTypes, Keywords, Token};
 
 use super::{error, Parser, ParserError, ParserErrorStack};
 
@@ -105,6 +105,46 @@ impl ToString for Type {
                     format!("{str}, {}", r#type.to_string())
                 })[2..]
             ),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum NamespacedType {
+    Space(String, Box<NamespacedType>),
+    Final(String),
+}
+
+impl TryFrom<&mut Parser> for NamespacedType {
+    type Error = ParserError;
+
+    fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
+        Ok(
+            match value.pop_front_err("NamespacedType", "Expected more tokens")? {
+                Token::Identifier(iden)
+                    if value.first() == Some(&Token::Keyword(Keywords::Arrow)) =>
+                {
+                    value.pop_front();
+                    NamespacedType::Space(
+                        iden,
+                        Box::new(error!(
+                            NamespacedType::try_from(&mut *value),
+                            "NamescapedType"
+                        )?),
+                    )
+                }
+                Token::Identifier(iden) => NamespacedType::Final(iden),
+                token => return Err(error!("NamespacedType", format!("Expected identifier, got {token:#?}"))),
+            },
+        )
+    }
+}
+
+impl ToString for NamespacedType {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Space(name, namespaces) => format!("{name}::{}", namespaces.to_string()),
+            Self::Final(name) => format!("{name}"),
         }
     }
 }

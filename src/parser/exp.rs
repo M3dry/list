@@ -3,8 +3,8 @@ use either::Either;
 use crate::tokenizer::{Keywords, Literals, Token};
 
 use super::{
-    error, lambda::Lambda, r#if::If, r#let::Let, r#match::Match, Parser, ParserError,
-    ParserErrorStack,
+    error, lambda::Lambda, r#if::If, r#let::Let, r#match::Match, r#type::NamespacedType, Parser,
+    ParserError, ParserErrorStack,
 };
 
 #[derive(Debug)]
@@ -39,8 +39,73 @@ impl ToString for Call {
 }
 
 #[derive(Debug)]
+pub struct TypeCreation {
+    name: NamespacedType,
+    args: Vec<Exp>,
+}
+
+impl TryFrom<&mut Parser> for TypeCreation {
+    type Error = ParserError;
+
+    fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
+        if value.first() == Some(&Token::ParenOpen) {
+            let next = value.pop_front_err("TypeCreation", "Expected more Tokens")?;
+            if next != Token::ParenOpen {
+                return Err(error!(
+                    "TypeCreation",
+                    format!("Expected parenOpen, got {next:#?}")
+                ));
+            }
+
+            let name = error!(NamespacedType::try_from(&mut *value), "TypeCreation")?;
+            let mut args = vec![];
+
+            loop {
+                let peek = value
+                    .first()
+                    .ok_or(error!("TypeCreation", format!("Expected more tokens")))?;
+
+                if peek == &Token::ParenClose {
+                    value.pop_front();
+                    break;
+                }
+
+                args.push(error!(Exp::try_from(&mut *value), "TypeCreation")?)
+            }
+
+            Ok(TypeCreation { name, args })
+        } else {
+            Ok(TypeCreation {
+                name: error!(NamespacedType::try_from(&mut *value), "TypeCreation")?,
+                args: vec![],
+            })
+        }
+    }
+}
+
+impl ToString for TypeCreation {
+    fn to_string(&self) -> String {
+        format!(
+            "{}{}",
+            self.name.to_string(),
+            if !self.args.is_empty() {
+                format!(
+                    "({})",
+                    &self.args.iter().fold(String::new(), |str, arg| {
+                        format!("{str}, {}", arg.to_string())
+                    })[2..]
+                )
+            } else {
+                format!("")
+            }
+        )
+    }
+}
+
+#[derive(Debug)]
 pub enum Exp {
     Call(Box<Call>),
+    TypeCreation(Box<TypeCreation>),
     If(Box<If>),
     Match(Box<Match>),
     Let(Box<Let>),
@@ -57,7 +122,7 @@ impl TryFrom<&mut Parser> for Exp {
             .first()
             .ok_or(error!("Exp", format!("Expected more tokens")))?;
 
-        match *peek {
+        match peek {
             Token::ParenOpen => {
                 match value
                     .nth(1)
@@ -89,31 +154,39 @@ impl TryFrom<&mut Parser> for Exp {
                         ))
                     }
                     Token::Identifier(_) => {
-                        value.pop_front();
-                        let func = if let Token::Identifier(iden) = value.pop_front().unwrap() {
-                            iden
+                        if value.nth(2) == Some(&Token::Keyword(Keywords::Arrow)) {
+                            Ok(Exp::TypeCreation(Box::new(error!(
+                                TypeCreation::try_from(&mut *value),
+                                "Exp"
+                            )?)))
                         } else {
-                            panic!("wtf")
-                        };
-                        let mut params = vec![];
-
-                        loop {
-                            let peek = value
-                                .first()
-                                .ok_or(error!("Exp call/iden", format!("Expected more tokens"),))?;
-
-                            if *peek == Token::ParenClose {
-                                value.pop_front();
-                                break;
+                            value.pop_front();
+                            let func = if let Token::Identifier(iden) = value.pop_front().unwrap() {
+                                iden
                             } else {
-                                params.push(error!(Exp::try_from(&mut *value), "Exp")?)
-                            }
-                        }
+                                panic!("wtf")
+                            };
+                            let mut params = vec![];
 
-                        Ok(Exp::Call(Box::new(Call {
-                            func: Either::Right(func),
-                            params,
-                        })))
+                            loop {
+                                let peek = value.first().ok_or(error!(
+                                    "Exp call/iden",
+                                    format!("Expected more tokens"),
+                                ))?;
+
+                                if *peek == Token::ParenClose {
+                                    value.pop_front();
+                                    break;
+                                } else {
+                                    params.push(error!(Exp::try_from(&mut *value), "Exp")?)
+                                }
+                            }
+
+                            Ok(Exp::Call(Box::new(Call {
+                                func: Either::Right(func),
+                                params,
+                            })))
+                        }
                     }
                     Token::AngleBracketOpen | Token::AngleBracketClose => {
                         value.pop_front();
@@ -203,17 +276,18 @@ impl TryFrom<&mut Parser> for Exp {
                     params,
                 })))
             }
-            _ => {
-                let next = value.pop_front().unwrap();
-                if let Token::Literal(literal) = next {
+            Token::Literal(_) => {
+                let literal = value.pop_front().unwrap();
+                if let Token::Literal(literal) = literal {
                     Ok(Exp::Literal(literal))
                 } else {
-                    Err(error!(
-                        "Exp literal",
-                        format!("Expected a literal, got {next:#?}"),
-                    ))
+                    panic!("how")
                 }
             }
+            _ => Err(error!(
+                "Exp",
+                format!("Expected exp, got {:#?}", value.pop_front().unwrap()),
+            )),
         }
     }
 }
@@ -222,6 +296,7 @@ impl ToString for Exp {
     fn to_string(&self) -> String {
         match self {
             Exp::Call(call) => call.to_string(),
+            Exp::TypeCreation(creation) => creation.to_string(),
             Exp::If(r#if) => r#if.to_string(),
             Exp::Match(r#match) => r#match.to_string(),
             Exp::Let(r#let) => r#let.to_string(),

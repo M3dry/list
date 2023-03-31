@@ -1,0 +1,14 @@
+---
+source: src/parser/match.rs
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{}\",\n                                |parser|\n    match Match::try_from(parser) {\n        Ok(res) => res.to_string(),\n        Err(err) => format!(\"{err:#?}\"),\n    }\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+---
+(match 100 (10 1) (_ 0))
+match {100} {
+10 => {1}
+_ => {0}}
+
+(match (Option->None) (Option->None 1) ((Option->Some var) if (= var 10) 0) ((Option->Some _) 3))
+match {Option::None} {
+Option::None => {1}
+Option::Some(var) if =(var, 10) => {0}
+Option::Some(_) => {3}}
