@@ -1,6 +1,4 @@
-use crate::{
-    tokenizer::{Keywords, Literals, Token},
-};
+use crate::tokenizer::{Keywords, Literals, Token};
 
 use super::{
     error,
@@ -86,6 +84,7 @@ impl TryFrom<&mut Parser> for Branch {
         }
 
         let pattern = error!(Pattern::try_from(&mut *value), "Branch")?;
+        println!("{pattern:#?}");
 
         let ret = if value.first() == Some(&Token::Keyword(Keywords::If)) {
             value.pop_front();
@@ -201,8 +200,35 @@ impl TryFrom<&mut Parser> for Pattern {
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
         if value.first() == Some(&Token::ParenOpen) {
-            let ret = if value.nth(2) == Some(&Token::Keyword(Keywords::Arrow)) {
-                return Ok(Pattern::Type(error!(TypeCreation::try_from(&mut *value), "Pattern")?))
+            let ret = if matches!(
+                value.nth(2),
+                Some(&Token::Keyword(Keywords::Arrow) | &Token::CurlyOpen)
+            ) {
+                let type_creation = error!(TypeCreation::try_from(&mut *value), "Pattern")?;
+                match type_creation {
+                    TypeCreation::Vars(_, args)
+                        if !args
+                            .iter()
+                            .all(|arg| matches!(arg, Exp::Literal(_) | Exp::Identifier(_))) =>
+                    {
+                        return Err(error!(
+                            "Pattern",
+                            format!("Expected all args to be literals or identifiers")
+                        ))
+                    }
+                    TypeCreation::Struct(_, fields)
+                        if !fields.iter().all(|(_, exp)| {
+                            matches!(exp, Exp::Literal(_) | Exp::Identifier(_))
+                        }) =>
+                    {
+                        return Err(error!(
+                            "Pattern",
+                            format!("Expected all fields to be literals or identifiers")
+                        ))
+                    }
+                    _ => (),
+                };
+                return Ok(Pattern::Type(type_creation));
             } else {
                 value.pop_front();
                 Ok(
@@ -216,12 +242,43 @@ impl TryFrom<&mut Parser> for Pattern {
 
             let next = value.pop_front_err("Pattern", "Expected more tokens")?;
             if next != Token::ParenClose {
-                return Err(error!("Pattern", format!("Expected parenClose, got {next:#?}")))
+                return Err(error!(
+                    "Pattern",
+                    format!("Expected parenClose, got {next:#?}")
+                ));
             }
 
             ret
-        } else if value.nth(1) == Some(&Token::Keyword(Keywords::Arrow)) {
-            return Ok(Pattern::Type(error!(TypeCreation::try_from(&mut *value), "Pattern")?))
+        } else if matches!(
+            value.nth(1),
+            Some(&Token::Keyword(Keywords::Arrow) | &Token::CurlyOpen)
+        ) {
+            let type_creation = error!(TypeCreation::try_from(&mut *value), "Pattern")?;
+            match type_creation {
+                TypeCreation::Vars(_, args)
+                    if !args
+                        .iter()
+                        .all(|arg| matches!(arg, Exp::Literal(_) | Exp::Identifier(_))) =>
+                {
+                    return Err(error!(
+                        "Pattern",
+                        format!("Expected all args to be literals or identifiers")
+                    ))
+                }
+                TypeCreation::Struct(_, fields)
+                    if !fields
+                        .iter()
+                        .all(|(_, exp)| matches!(exp, Exp::Literal(_) | Exp::Identifier(_))) =>
+                {
+                    return Err(error!(
+                        "Pattern",
+                        format!("Expected all fields to be literals or identifiers")
+                    ))
+                }
+                _ => (),
+            };
+
+            return Ok(Pattern::Type(type_creation));
         } else {
             Ok(
                 match value.pop_front_err("Pattern", "Expected more tokens")? {

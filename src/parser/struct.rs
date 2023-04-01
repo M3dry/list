@@ -98,7 +98,7 @@ impl ToString for Struct {
 }
 
 #[derive(Debug)]
-pub(crate) struct StructFields(Vec<StructField>);
+pub struct StructFields(Vec<StructField>);
 
 impl TryFrom<&mut Parser> for StructFields {
     type Error = ParserError;

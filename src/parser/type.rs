@@ -101,9 +101,13 @@ impl ToString for Type {
             Type::Array(r#type) => format!("Vec<{}>", r#type.to_string()),
             Type::Touple(types) => format!(
                 "({})",
-                &types.into_iter().fold(String::new(), |str, r#type| {
-                    format!("{str}, {}", r#type.to_string())
-                })[2..]
+                &if types.is_empty() {
+                    format!(", ")
+                } else {
+                    types.into_iter().fold(String::new(), |str, r#type| {
+                        format!("{str}, {}", r#type.to_string())
+                    })
+                }[2..]
             ),
         }
     }
@@ -134,7 +138,12 @@ impl TryFrom<&mut Parser> for NamespacedType {
                     )
                 }
                 Token::Identifier(iden) => NamespacedType::Final(iden),
-                token => return Err(error!("NamespacedType", format!("Expected identifier, got {token:#?}"))),
+                token => {
+                    return Err(error!(
+                        "NamespacedType",
+                        format!("Expected identifier, got {token:#?}")
+                    ))
+                }
             },
         )
     }

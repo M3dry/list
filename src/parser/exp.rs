@@ -3,8 +3,8 @@ use either::Either;
 use crate::tokenizer::{Keywords, Literals, Token};
 
 use super::{
-    error, lambda::Lambda, r#if::If, r#let::Let, r#match::Match, r#type::NamespacedType, Parser,
-    ParserError, ParserErrorStack,
+    error, lambda::Lambda, r#if::If, r#let::Let, r#match::Match, r#struct::StructFields,
+    r#type::NamespacedType, Parser, ParserError, ParserErrorStack,
 };
 
 #[derive(Debug)]
@@ -39,66 +39,124 @@ impl ToString for Call {
 }
 
 #[derive(Debug)]
-pub struct TypeCreation {
-    name: NamespacedType,
-    args: Vec<Exp>,
+pub enum TypeCreation {
+    Simple(NamespacedType),
+    Vars(NamespacedType, Vec<Exp>),
+    Struct(NamespacedType, Vec<(String, Exp)>),
 }
 
 impl TryFrom<&mut Parser> for TypeCreation {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        if value.first() == Some(&Token::ParenOpen) {
-            let next = value.pop_front_err("TypeCreation", "Expected more Tokens")?;
-            if next != Token::ParenOpen {
-                return Err(error!(
-                    "TypeCreation",
-                    format!("Expected parenOpen, got {next:#?}")
-                ));
-            }
+        let mut paren = false;
+        let next = value
+            .first()
+            .ok_or(error!("TypeCreation", format!("Expected more tokens")))?;
+        if next == &Token::ParenOpen {
+            value.pop_front();
+            paren = true;
+        }
 
-            let name = error!(NamespacedType::try_from(&mut *value), "TypeCreation")?;
-            let mut args = vec![];
+        let name = error!(NamespacedType::try_from(&mut *value), "TypeCreation")?;
 
-            loop {
-                let peek = value
-                    .first()
-                    .ok_or(error!("TypeCreation", format!("Expected more tokens")))?;
+        let ret = match value.first() {
+            Some(Token::CurlyOpen) => {
+                value.pop_front();
+                let mut fields = vec![];
 
-                if peek == &Token::ParenClose {
-                    value.pop_front();
-                    break;
+                loop {
+                    let peek = value
+                        .first()
+                        .ok_or(error!("TypeCreation", format!("Expected more tokens")))?;
+
+                    if peek == &Token::CurlyClose {
+                        value.pop_front();
+                        break;
+                    }
+
+                    let next = value.pop_front_err("TypeCreation", "Expected more tokens")?;
+                    let name = if let Token::Identifier(iden) = next {
+                        iden
+                    } else {
+                        return Err(error!(
+                            "TypeCreation",
+                            format!("Expected identifier, got {next:#?}")
+                        ));
+                    };
+
+                    let next = value.pop_front_err("TypeCreation", "Expected more tokens")?;
+                    if next != Token::Keyword(Keywords::Arrow) {
+                        return Err(error!(
+                            "TypeCreation",
+                            format!("Expected arrow keyword, got {next:#?}")
+                        ));
+                    }
+
+                    let exp = error!(Exp::try_from(&mut *value), "TypeCreation")?;
+
+                    fields.push((name, exp));
                 }
 
-                args.push(error!(Exp::try_from(&mut *value), "TypeCreation")?)
+                Ok(Self::Struct(name, fields))
             }
+            Some(Token::ParenClose) => Ok(Self::Simple(name)),
+            Some(_) if paren => {
+                let mut args = vec![];
 
-            Ok(TypeCreation { name, args })
-        } else {
-            Ok(TypeCreation {
-                name: error!(NamespacedType::try_from(&mut *value), "TypeCreation")?,
-                args: vec![],
-            })
+                loop {
+                    let peek = value
+                        .first()
+                        .ok_or(error!("TypeCreation", format!("Expected more tokens")))?;
+
+                    if peek == &Token::ParenClose {
+                        value.pop_front();
+                        break;
+                    }
+
+                    args.push(error!(Exp::try_from(&mut *value), "TypeCreation")?)
+                }
+
+                return Ok(Self::Vars(name, args));
+            }
+            _ => Ok(Self::Simple(name)),
+        };
+
+        if paren {
+            let next = value.pop_front_err("TypeCreation", "Expected more tokens")?;
+            if next != Token::ParenClose {
+                return Err(error!(
+                    "TypeCreation",
+                    format!("Expected parenClose, got {next:#?}")
+                ));
+            }
         }
+
+        ret
     }
 }
 
 impl ToString for TypeCreation {
     fn to_string(&self) -> String {
-        format!(
-            "{}{}",
-            self.name.to_string(),
-            if !self.args.is_empty() {
+        match self {
+            TypeCreation::Simple(name) => format!("{}", name.to_string()),
+            TypeCreation::Vars(name, args) => format!(
+                "{}({})",
+                name.to_string(),
+                &args.iter().fold(String::new(), |str, arg| {
+                    format!("{str}, {}", arg.to_string())
+                })[2..]
+            ),
+            TypeCreation::Struct(name, fields) => {
                 format!(
-                    "({})",
-                    &self.args.iter().fold(String::new(), |str, arg| {
-                        format!("{str}, {}", arg.to_string())
+                    "{}{{{}}}",
+                    name.to_string(),
+                    &fields.iter().fold(String::new(), |str, field| {
+                        format!("{str}, {}:{}", field.0, field.1.to_string())
                     })[2..]
                 )
-            } else {
-                format!("")
             }
-        )
+        }
     }
 }
 
@@ -153,13 +211,11 @@ impl TryFrom<&mut Parser> for Exp {
                             },
                         ))
                     }
-                    Token::Identifier(_) => {
-                        if value.nth(2) == Some(&Token::Keyword(Keywords::Arrow)) {
-                            Ok(Exp::TypeCreation(Box::new(error!(
-                                TypeCreation::try_from(&mut *value),
-                                "Exp"
-                            )?)))
-                        } else {
+                    Token::Identifier(_) => match value.nth(2) {
+                        Some(&Token::Keyword(Keywords::Arrow) | &Token::CurlyOpen) => Ok(Exp::TypeCreation(Box::new(
+                            error!(TypeCreation::try_from(&mut *value), "Exp")?,
+                        ))),
+                        _ => {
                             value.pop_front();
                             let func = if let Token::Identifier(iden) = value.pop_front().unwrap() {
                                 iden
@@ -187,7 +243,7 @@ impl TryFrom<&mut Parser> for Exp {
                                 params,
                             })))
                         }
-                    }
+                    },
                     Token::AngleBracketOpen | Token::AngleBracketClose => {
                         value.pop_front();
 
@@ -243,14 +299,22 @@ impl TryFrom<&mut Parser> for Exp {
                     token => return Err(error!("Exp", format!("got {token:#?}"))),
                 }
             }
-            Token::Identifier(_) => {
-                let iden = value.pop_front().unwrap();
-                if let Token::Identifier(iden) = iden {
-                    Ok(Exp::Identifier(iden))
-                } else {
-                    panic!("how")
+            Token::Identifier(_) => match value.nth(1) {
+                Some(&Token::Keyword(Keywords::Arrow) | &Token::CurlyOpen) => {
+                    Ok(Exp::TypeCreation(Box::new(error!(
+                        TypeCreation::try_from(&mut *value),
+                        "Exp"
+                    )?)))
                 }
-            }
+                _ => {
+                    let iden = value.pop_front().unwrap();
+                    if let Token::Identifier(iden) = iden {
+                        Ok(Exp::Identifier(iden))
+                    } else {
+                        panic!("how")
+                    }
+                }
+            },
             Token::AngleBracketOpen | Token::AngleBracketClose => {
                 let angle = match value.pop_front().unwrap() {
                     Token::AngleBracketOpen => "<",

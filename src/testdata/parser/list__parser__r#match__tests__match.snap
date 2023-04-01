@@ -47,28 +47,26 @@ Ok(
 Ok(
     Match {
         against: TypeCreation(
-            TypeCreation {
-                name: Space(
+            Simple(
+                Space(
                     "Option",
                     Final(
                         "None",
                     ),
                 ),
-                args: [],
-            },
+            ),
         ),
         branches: [
             Branch {
                 pattern: Type(
-                    TypeCreation {
-                        name: Space(
+                    Simple(
+                        Space(
                             "Option",
                             Final(
                                 "None",
                             ),
                         ),
-                        args: [],
-                    },
+                    ),
                 ),
                 check: None,
                 ret: Literal(
@@ -80,19 +78,19 @@ Ok(
             },
             Branch {
                 pattern: Type(
-                    TypeCreation {
-                        name: Space(
+                    Vars(
+                        Space(
                             "Option",
                             Final(
                                 "Some",
                             ),
                         ),
-                        args: [
+                        [
                             Identifier(
                                 "var",
                             ),
                         ],
-                    },
+                    ),
                 ),
                 check: Some(
                     Call(
@@ -123,25 +121,135 @@ Ok(
             },
             Branch {
                 pattern: Type(
-                    TypeCreation {
-                        name: Space(
+                    Vars(
+                        Space(
                             "Option",
                             Final(
                                 "Some",
                             ),
                         ),
-                        args: [
+                        [
                             Identifier(
                                 "_",
                             ),
                         ],
-                    },
+                    ),
                 ),
                 check: None,
                 ret: Literal(
                     Int(
                         false,
                         3,
+                    ),
+                ),
+            },
+        ],
+    },
+)
+
+(match StructType { x->100 y->"hello" } (StructType { x->100 y->"hi" } 3) (StructType { x->var y->"hello" } var) (_ 0))
+Ok(
+    Match {
+        against: TypeCreation(
+            Struct(
+                Final(
+                    "StructType",
+                ),
+                [
+                    (
+                        "x",
+                        Literal(
+                            Int(
+                                false,
+                                100,
+                            ),
+                        ),
+                    ),
+                    (
+                        "y",
+                        Literal(
+                            String(
+                                "hello",
+                            ),
+                        ),
+                    ),
+                ],
+            ),
+        ),
+        branches: [
+            Branch {
+                pattern: Type(
+                    Struct(
+                        Final(
+                            "StructType",
+                        ),
+                        [
+                            (
+                                "x",
+                                Literal(
+                                    Int(
+                                        false,
+                                        100,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "y",
+                                Literal(
+                                    String(
+                                        "hi",
+                                    ),
+                                ),
+                            ),
+                        ],
+                    ),
+                ),
+                check: None,
+                ret: Literal(
+                    Int(
+                        false,
+                        3,
+                    ),
+                ),
+            },
+            Branch {
+                pattern: Type(
+                    Struct(
+                        Final(
+                            "StructType",
+                        ),
+                        [
+                            (
+                                "x",
+                                Identifier(
+                                    "var",
+                                ),
+                            ),
+                            (
+                                "y",
+                                Literal(
+                                    String(
+                                        "hello",
+                                    ),
+                                ),
+                            ),
+                        ],
+                    ),
+                ),
+                check: None,
+                ret: Identifier(
+                    "var",
+                ),
+            },
+            Branch {
+                pattern: Var(
+                    "_",
+                ),
+                check: None,
+                ret: Literal(
+                    Int(
+                        false,
+                        0,
                     ),
                 ),
             },

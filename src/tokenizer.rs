@@ -319,7 +319,7 @@ mod tests {
 
     snapshot!(test_calling, "../testdata/input/calling.lt");
     snapshot!(test_if, "../testdata/input/if.lt");
-    //snapshot!(test_match, "../testdata/input/match.lt");
+    snapshot!(test_match, "../testdata/input/match.lt");
     snapshot!(test_defun, "../testdata/input/defun.lt");
     snapshot!(test_lambda, "../testdata/input/lambda.lt");
     snapshot!(test_let, "../testdata/input/let.lt");
