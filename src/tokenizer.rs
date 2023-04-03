@@ -59,6 +59,7 @@ pub(crate) enum Keywords {
     Let,
     Struct,
     Enum,
+    Use,
     Arrow,
 }
 
@@ -224,6 +225,7 @@ fn token_from_str(str: &str) -> Vec<Token> {
         "let" => vec![Token::Keyword(Keywords::Let)],
         "struct" => vec![Token::Keyword(Keywords::Struct)],
         "enum" => vec![Token::Keyword(Keywords::Enum)],
+        "use" => vec![Token::Keyword(Keywords::Use)],
         "true" => vec![Token::Literal(Literals::Bool(true))],
         "false" => vec![Token::Literal(Literals::Bool(false))],
         "u8" => vec![Token::Type(BuiltinTypes::U8)],
