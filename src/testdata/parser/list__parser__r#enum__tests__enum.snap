@@ -1,6 +1,6 @@
 ---
 source: src/parser/enum.rs
-expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{:#?}\", Enum::try_from\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{}\",\n                                |parser| format!(\"{:#?}\", Enum::try_from (parser))\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
 ---
 (enum Hello Xy)
 Ok(
@@ -73,6 +73,7 @@ Ok(
                                 Builtin(
                                     String,
                                 ),
+                                None,
                             ),
                         ],
                     ),

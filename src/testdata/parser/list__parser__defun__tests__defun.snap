@@ -1,6 +1,6 @@
 ---
 source: src/parser/defun.rs
-expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{:#?}\", Defun::try_from\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{}\",\n                                |parser| format!(\"{:#?}\", Defun::try_from (parser))\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
 ---
 (defun func (x->i32)->string "hello")
 Ok(
@@ -120,6 +120,7 @@ Ok(
                     Builtin(
                         I32,
                     ),
+                    None,
                 ),
                 Builtin(
                     String,

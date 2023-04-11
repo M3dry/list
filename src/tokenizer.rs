@@ -8,9 +8,13 @@ pub struct Tokens(pub(crate) Vec<Token>);
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Token {
+    ToLiteral,
     Literal(Literals),
     Keyword(Keywords),
     Type(BuiltinTypes),
+    Ref,
+    Char(char),
+    Slash,
     ParenOpen,
     ParenClose,
     BracketOpen,
@@ -61,6 +65,7 @@ pub(crate) enum Keywords {
     Enum,
     Use,
     Arrow,
+    Mut,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -118,6 +123,7 @@ impl FromStr for Tokens {
                 ']' => tokens.push(Token::BracketClose),
                 '{' => tokens.push(Token::CurlyOpen),
                 '}' => tokens.push(Token::CurlyClose),
+                '/' => tokens.push(Token::Slash),
                 '\'' => {
                     let ch = chars.next().unwrap();
 
@@ -146,17 +152,17 @@ impl FromStr for Tokens {
                         literal.into_iter().collect(),
                     )));
                 }
-                char => {
-                    if char == '('
-                        || char == ')'
-                        || char == '['
-                        || char == ']'
-                        || char == '<'
-                        || char == '>'
-                        || char == ' '
-                    {
-                        continue;
-                    }
+                '&' => tokens.push(Token::Ref),
+                char if char != '('
+                    && char != ')'
+                    && char != '['
+                    && char != ']'
+                    && char != '<'
+                    && char != '>'
+                    && char != ';'
+                    && char != '/'
+                    && char != ' ' =>
+                {
                     let mut chs = vec![];
 
                     if char == '-' {
@@ -181,6 +187,8 @@ impl FromStr for Tokens {
                             || *char == ']'
                             || *char == '<'
                             || *char == '>'
+                            || *char == ';'
+                            || *char == '/'
                             || *char == ' '
                         {
                             break;
@@ -209,6 +217,8 @@ impl FromStr for Tokens {
                         &chs.into_iter().collect::<String>()[..],
                     ));
                 }
+                char if char != ' ' => tokens.push(Token::Char(char)),
+                _ => continue,
             }
         }
 
@@ -218,6 +228,7 @@ impl FromStr for Tokens {
 
 fn token_from_str(str: &str) -> Vec<Token> {
     match str {
+        "`" => vec![Token::ToLiteral],
         "if" => vec![Token::Keyword(Keywords::If)],
         "match" => vec![Token::Keyword(Keywords::Match)],
         "defun" => vec![Token::Keyword(Keywords::Defun)],
@@ -226,6 +237,7 @@ fn token_from_str(str: &str) -> Vec<Token> {
         "struct" => vec![Token::Keyword(Keywords::Struct)],
         "enum" => vec![Token::Keyword(Keywords::Enum)],
         "use" => vec![Token::Keyword(Keywords::Use)],
+        "mut" => vec![Token::Keyword(Keywords::Mut)],
         "true" => vec![Token::Literal(Literals::Bool(true))],
         "false" => vec![Token::Literal(Literals::Bool(false))],
         "u8" => vec![Token::Type(BuiltinTypes::U8)],

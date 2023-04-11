@@ -12,4 +12,4 @@ pub fn func(x: i32, y: i128) -> i64 {+(x, y)}
 pub(crate) fn func<t>(x: t, y: t) -> t {x}
 
 (defun func ()-><[i32] string> (func))
-fn func() -> (Vec<i32>, String) {func()}
+fn func() -> ([i32], String) {func()}
