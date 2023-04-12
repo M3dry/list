@@ -18,7 +18,7 @@ impl TryFrom<&mut Parser> for Type {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        match value.pop_front_err("Type", "Expected more tokens")? {
+        match value.pop_front_err("Type")? {
             Token::Ref if value.first() == Some(&Token::Slash) => {
                 let lifetimes = error!(Lifetimes::try_from(&mut *value), "Type")?;
 
@@ -52,11 +52,11 @@ impl TryFrom<&mut Parser> for Type {
             Token::BracketOpen => {
                 let r#type = Box::new(error!(Type::try_from(&mut *value), "Type")?);
 
-                match value.pop_front_err("Type", "Expected more tokens")? {
+                match value.pop_front_err("Type")? {
                     Token::BracketClose => Ok(Type::Array(r#type, None)),
                     Token::Char(';') => {
                         let Token::Literal(Literals::Int(neg, len)) =
-                            value.pop_front_err("Type", "Expected more tokens")?
+                            value.pop_front_err("Type")?
                         else {
                                 return Err(error!("Type", format!("")))
                         };
@@ -68,7 +68,7 @@ impl TryFrom<&mut Parser> for Type {
                             ));
                         }
 
-                        let next = value.pop_front_err("Type", "Expected more tokens")?;
+                        let next = value.pop_front_err("Type")?;
                         if next != Token::BracketClose {
                             return Err(error!(
                                 "Type",
@@ -103,7 +103,7 @@ impl TryFrom<&mut Parser> for Type {
                 Ok(Type::Touple(types))
             }
             Token::ParenOpen => {
-                let next = value.pop_front_err("Type", "Expected more tokens")?;
+                let next = value.pop_front_err("Type")?;
                 match next {
                     Token::Type(builtin) => {
                         if value.pop_front() != Some(Token::ParenClose) {
@@ -182,7 +182,7 @@ impl TryFrom<&mut Parser> for Lifetimes {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Lifetimes", "Expected more tokens")?;
+        let next = value.pop_front_err("Lifetimes")?;
         if next != Token::Slash {
             return Err(error!("Lifetimes", format!("Expected slash, got {next:#?}")))
         }
@@ -197,7 +197,7 @@ impl TryFrom<&mut Parser> for Lifetimes {
                 break;
             }
 
-            match value.pop_front_err("Lifetimes", "Expected more tokens")? {
+            match value.pop_front_err("Lifetimes")? {
                 Token::Identifier(iden) => lifetimes.push(iden),
                 token => return Err(error!("Lifetimes", format!("Expected identifier, got {token:#?}"))),
             }
@@ -230,7 +230,7 @@ impl TryFrom<&mut Parser> for NamespacedType {
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
         Ok(
-            match value.pop_front_err("NamespacedType", "Expected more tokens")? {
+            match value.pop_front_err("NamespacedType")? {
                 Token::Identifier(iden)
                     if value.first() == Some(&Token::Keyword(Keywords::Arrow)) =>
                 {

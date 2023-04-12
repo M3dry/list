@@ -13,12 +13,12 @@ impl TryFrom<&mut Parser> for Use {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Use", "Expected more tokens")?;
+        let next = value.pop_front_err("Use")?;
         if next != Token::ParenOpen {
             return Err(error!("Use", format!("Expected parenOpen, got {next:#?}")));
         }
 
-        let next = value.pop_front_err("Use", "Expected more tokens")?;
+        let next = value.pop_front_err("Use")?;
         if next != Token::Keyword(Keywords::Use) {
             return Err(error!(
                 "Use",
@@ -28,7 +28,7 @@ impl TryFrom<&mut Parser> for Use {
 
         let ret = error!(UsePath::try_from(&mut *value), "Use")?;
 
-        let next = value.pop_front_err("Use", "Expected more tokens")?;
+        let next = value.pop_front_err("Use")?;
         if next != Token::ParenClose {
             return Err(error!("Use", format!("Expected parenClose, got {next:#?}")));
         }
@@ -55,7 +55,7 @@ impl TryFrom<&mut Parser> for UsePath {
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
         Ok(
-            match value.pop_front_err("UsePath", "Expected more tokens")? {
+            match value.pop_front_err("UsePath")? {
                 Token::Identifier(name)
                     if value.first() == Some(&Token::Keyword(Keywords::Arrow)) =>
                 {

@@ -13,7 +13,7 @@ impl TryFrom<&mut Parser> for Arg {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Arg", "Expected more tokens")?;
+        let next = value.pop_front_err("Arg")?;
         let name = match next {
             Token::Identifier(iden) => iden,
             Token::Generic(generic) => return Ok(Arg::Generic(generic)),
@@ -50,7 +50,7 @@ impl TryFrom<&mut Parser> for ArgsTyped {
         let mut args = vec![];
         let mut generics = vec![];
 
-        let next = value.pop_front_err("ArgsTyped", "Expected more tokens")?;
+        let next = value.pop_front_err("ArgsTyped")?;
         if next != Token::ParenOpen {
             return Err(error!(
                 "ArgsTyped",
@@ -121,7 +121,7 @@ impl TryFrom<&mut Parser> for Args {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Args", "Expected more tokens")?;
+        let next = value.pop_front_err("Args")?;
         if next != Token::ParenOpen {
             return Err(error!("Args", format!("Expected ParenOpen, got {next:#?}"),));
         }

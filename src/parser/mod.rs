@@ -134,9 +134,8 @@ impl Parser {
     fn pop_front_err(
         &mut self,
         func: &'static str,
-        err: &'static str,
     ) -> Result<Token, ParserError> {
-        self.tokens.pop_front().ok_or(error!(func, err.to_string()))
+        self.tokens.pop_front().ok_or(error!(func, "Expected more tokens".to_string()))
     }
 
     fn pop_front(&mut self) -> Option<Token> {

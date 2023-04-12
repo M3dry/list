@@ -17,7 +17,7 @@ impl TryFrom<&mut Parser> for Defun {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Defun", "Expected more tokens")?;
+        let next = value.pop_front_err("Defun")?;
         if next != Token::ParenOpen {
             return Err(error!(
                 "Defun",
@@ -27,7 +27,7 @@ impl TryFrom<&mut Parser> for Defun {
 
         let scope = Scope::try_from(&mut *value).unwrap();
 
-        let next = value.pop_front_err("Defun", "Expected more tokens")?;
+        let next = value.pop_front_err("Defun")?;
         if next != Token::Keyword(Keywords::Defun) {
             return Err(error!(
                 "Defun",
@@ -35,7 +35,7 @@ impl TryFrom<&mut Parser> for Defun {
             ));
         }
 
-        let next = value.pop_front_err("Defun", "Expected more tokens")?;
+        let next = value.pop_front_err("Defun")?;
         let name = if let Token::Identifier(iden) = next {
             iden
         } else {
@@ -47,7 +47,7 @@ impl TryFrom<&mut Parser> for Defun {
 
         let args = error!(ArgsTyped::try_from(&mut *value), "Defun")?;
 
-        let next = value.pop_front_err("Defun", "Expected more tokens")?;
+        let next = value.pop_front_err("Defun")?;
         if next != Token::Keyword(Keywords::Arrow) {
             return Err(error!(
                 "Defun arrow",

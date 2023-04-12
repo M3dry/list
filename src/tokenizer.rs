@@ -153,16 +153,9 @@ impl FromStr for Tokens {
                     )));
                 }
                 '&' => tokens.push(Token::Ref),
-                char if char != '('
-                    && char != ')'
-                    && char != '['
-                    && char != ']'
-                    && char != '<'
-                    && char != '>'
-                    && char != ';'
-                    && char != '/'
-                    && char != ' ' =>
+                char if char.is_ascii_alphanumeric() || char == '-' || char == '_' =>
                 {
+                    println!("{char}");
                     let mut chs = vec![];
 
                     if char == '-' {
@@ -181,15 +174,7 @@ impl FromStr for Tokens {
                     }
 
                     while let Some(char) = chars.peek() {
-                        if *char == '('
-                            || *char == ')'
-                            || *char == '['
-                            || *char == ']'
-                            || *char == '<'
-                            || *char == '>'
-                            || *char == ';'
-                            || *char == '/'
-                            || *char == ' '
+                        if !char.is_ascii_alphanumeric() && *char != '-' && *char != '_'
                         {
                             break;
                         } else if *char == '-' {

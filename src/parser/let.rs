@@ -12,12 +12,12 @@ impl TryFrom<&mut Parser> for Let {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Let", "Expected more tokens")?;
+        let next = value.pop_front_err("Let")?;
         if next != Token::ParenOpen {
             return Err(error!("Let", format!("Expected ParenOpen, got {next:#?}"),));
         }
 
-        let next = value.pop_front_err("Let", "Expected more tokens")?;
+        let next = value.pop_front_err("Let")?;
         if next != Token::Keyword(Keywords::Let) {
             return Err(error!(
                 "Let keyword",
@@ -42,7 +42,7 @@ impl TryFrom<&mut Parser> for Let {
             value.pop_front();
         } else if value.pop_front().unwrap() == Token::ParenOpen {
             loop {
-                let next = value.pop_front_err("Let vars", "Expected more tokens")?;
+                let next = value.pop_front_err("Let vars")?;
                 if next == Token::ParenClose {
                     break;
                 }
@@ -53,7 +53,7 @@ impl TryFrom<&mut Parser> for Let {
                     ));
                 }
 
-                let next = value.pop_front_err("Let vars", "Expected more tokens")?;
+                let next = value.pop_front_err("Let vars")?;
                 let iden = if let Token::Identifier(iden) = next {
                     iden
                 } else {
@@ -65,7 +65,7 @@ impl TryFrom<&mut Parser> for Let {
 
                 let exp = Exp::try_from(&mut *value)?;
 
-                let next = value.pop_front_err("Let vars", "Expected more tokens")?;
+                let next = value.pop_front_err("Let vars")?;
                 if next != Token::ParenClose {
                     return Err(error!(
                         "Let vars/close",

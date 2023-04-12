@@ -12,7 +12,7 @@ impl TryFrom<&mut Parser> for Lambda {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Lambda", "Expected more tokens")?;
+        let next = value.pop_front_err("Lambda")?;
         if next != Token::ParenOpen {
             return Err(error!(
                 "Lambda",
@@ -20,7 +20,7 @@ impl TryFrom<&mut Parser> for Lambda {
             ));
         }
 
-        let next = value.pop_front_err("Lambda", "Expected more tokens")?;
+        let next = value.pop_front_err("Lambda")?;
         if next != Token::Keyword(Keywords::Lambda) {
             return Err(error!(
                 "Lambda",
@@ -31,7 +31,7 @@ impl TryFrom<&mut Parser> for Lambda {
         let args = error!(Args::try_from(&mut *value), "Lambda")?;
         let body = error!(Exp::try_from(&mut *value), "Lambda")?;
 
-        let next = value.pop_front_err("Lambda", "Expected more tokens")?;
+        let next = value.pop_front_err("Lambda")?;
         if next != Token::ParenClose {
             return Err(error!(
                 "Lambda",

@@ -16,7 +16,7 @@ impl TryFrom<&mut Parser> for Match {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Match", "Expected more tokens")?;
+        let next = value.pop_front_err("Match")?;
         if next != Token::ParenOpen {
             return Err(error!(
                 "Match",
@@ -24,7 +24,7 @@ impl TryFrom<&mut Parser> for Match {
             ));
         }
 
-        let next = value.pop_front_err("Match", "Expected more tokens")?;
+        let next = value.pop_front_err("Match")?;
         if next != Token::Keyword(Keywords::Match) {
             return Err(error!(
                 "Match",
@@ -75,7 +75,7 @@ impl TryFrom<&mut Parser> for Branch {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Branch", "Expected more tokens")?;
+        let next = value.pop_front_err("Branch")?;
         if next != Token::ParenOpen {
             return Err(error!(
                 "Branch",
@@ -102,66 +102,7 @@ impl TryFrom<&mut Parser> for Branch {
             })
         };
 
-        // let next = value.pop_front_err("Branch", "Expected more tokens")?;
-        // let ret = match next {
-        //     Token::Literal(literal) => Ok(Branch {
-        //         pattern: Pattern::Literal(literal),
-        //         check: None,
-        //         ret: error!(Exp::try_from(&mut *value), "Branch literal")?,
-        //     }),
-        //     Token::Identifier(iden) if value.first() != Some(&Token::Keyword(Keywords::Arrow)) => Ok(Branch {
-        //         pattern: Pattern::Var(iden),
-        //         check: None,
-        //         ret: error!(Exp::try_from(&mut *value), "Branch literal")?,
-        //     }),
-        //     Token::ParenOpen => {
-        //         let mut tokens = vec![];
-
-        //         while !matches!(
-        //             value.first(),
-        //             Some(Token::ParenClose | Token::Keyword(Keywords::If))
-        //         ) {
-        //             tokens.push(value.pop_front().unwrap())
-        //         }
-
-        //         let pattern = error!(
-        //             Pattern::try_from(&mut Parser::new(crate::tokenizer::Tokens(tokens))),
-        //             "Branch"
-        //         )?;
-        //         let next = value.pop_front_err("Branch", "Expected more tokens")?;
-
-        //         match next {
-        //             Token::Keyword(Keywords::If) => {
-        //                 let check = error!(Exp::try_from(&mut *value), "Branch")?;
-        //                 let next = value
-        //                     .pop_front()
-        //                     .ok_or(error!("Branch", format!("Expected more tokens"),))?;
-        //                 if next != Token::ParenClose {
-        //                     return Err(error!(
-        //                         "Branch",
-        //                         format!("Expected ParenClose, got {next:#?}"),
-        //                     ));
-        //                 }
-        //                 let ret = Ok(Branch {
-        //                     pattern,
-        //                     check: Some(check),
-        //                     ret: error!(Exp::try_from(&mut *value), "Branch")?,
-        //                 });
-
-        //                 ret
-        //             }
-        //             Token::ParenClose => Ok(Branch {
-        //                 pattern,
-        //                 check: None,
-        //                 ret: error!(Exp::try_from(&mut *value), "Branch")?,
-        //             }),
-        //             _ => unreachable!(),
-        //         }
-        //     }
-        //     _ => unreachable!(),
-        // };
-
-        let next = value.pop_front_err("Branch close", "Expected more tokens")?;
+        let next = value.pop_front_err("Branch close")?;
         if next != Token::ParenClose {
             Err(error!(
                 "Branch",
@@ -209,7 +150,7 @@ impl TryFrom<&mut Parser> for Pattern {
                     TypeCreation::Vars(_, args)
                         if !args
                             .iter()
-                            .all(|arg| matches!(arg, Exp::Literal(_) | Exp::Identifier(_))) =>
+                            .all(|arg| matches!(arg, Exp::Literal(_) | Exp::Variable(_))) =>
                     {
                         return Err(error!(
                             "Pattern",
@@ -218,7 +159,7 @@ impl TryFrom<&mut Parser> for Pattern {
                     }
                     TypeCreation::Struct(_, fields)
                         if !fields.iter().all(|(_, exp)| {
-                            matches!(exp, Exp::Literal(_) | Exp::Identifier(_))
+                            matches!(exp, Exp::Literal(_) | Exp::Variable(_))
                         }) =>
                     {
                         return Err(error!(
@@ -232,7 +173,7 @@ impl TryFrom<&mut Parser> for Pattern {
             } else {
                 value.pop_front();
                 Ok(
-                    match value.pop_front_err("Pattern", "Expected more tokens")? {
+                    match value.pop_front_err("Pattern")? {
                         Token::Literal(literal) => Pattern::Literal(literal),
                         Token::Identifier(name) => Pattern::Var(name),
                         _ => todo!(),
@@ -240,7 +181,7 @@ impl TryFrom<&mut Parser> for Pattern {
                 )
             };
 
-            let next = value.pop_front_err("Pattern", "Expected more tokens")?;
+            let next = value.pop_front_err("Pattern")?;
             if next != Token::ParenClose {
                 return Err(error!(
                     "Pattern",
@@ -258,7 +199,7 @@ impl TryFrom<&mut Parser> for Pattern {
                 TypeCreation::Vars(_, args)
                     if !args
                         .iter()
-                        .all(|arg| matches!(arg, Exp::Literal(_) | Exp::Identifier(_))) =>
+                        .all(|arg| matches!(arg, Exp::Literal(_) | Exp::Variable(_))) =>
                 {
                     return Err(error!(
                         "Pattern",
@@ -268,7 +209,7 @@ impl TryFrom<&mut Parser> for Pattern {
                 TypeCreation::Struct(_, fields)
                     if !fields
                         .iter()
-                        .all(|(_, exp)| matches!(exp, Exp::Literal(_) | Exp::Identifier(_))) =>
+                        .all(|(_, exp)| matches!(exp, Exp::Literal(_) | Exp::Variable(_))) =>
                 {
                     return Err(error!(
                         "Pattern",
@@ -281,7 +222,7 @@ impl TryFrom<&mut Parser> for Pattern {
             return Ok(Pattern::Type(type_creation));
         } else {
             Ok(
-                match value.pop_front_err("Pattern", "Expected more tokens")? {
+                match value.pop_front_err("Pattern")? {
                     Token::Literal(literal) => Pattern::Literal(literal),
                     Token::Identifier(name) => Pattern::Var(name),
                     _ => todo!(),

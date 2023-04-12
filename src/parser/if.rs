@@ -12,12 +12,12 @@ impl TryFrom<&mut Parser> for If {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("If", "Expected more tokens")?;
+        let next = value.pop_front_err("If")?;
         if next != Token::ParenOpen {
             return Err(error!("If", format!("Expected ParenOpen, got {next:#?}"),));
         }
 
-        let next = value.pop_front_err("If", "Expected more tokens")?;
+        let next = value.pop_front_err("If")?;
         if next != Token::Keyword(Keywords::If) {
             return Err(error!("If", format!("Expected If keyword, got {next:#?}"),));
         }

@@ -12,12 +12,12 @@ impl TryFrom<&mut Parser> for Enum {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Enum", "Expected more tokens")?;
+        let next = value.pop_front_err("Enum")?;
         if next != Token::ParenOpen {
             return Err(error!("Enum", format!("Expected ParenOpen, got {next:#?}")));
         }
 
-        let next = value.pop_front_err("Enum", "Expected more tokens")?;
+        let next = value.pop_front_err("Enum")?;
         if next != Token::Keyword(Keywords::Enum) {
             return Err(error!(
                 "Enum",
@@ -25,7 +25,7 @@ impl TryFrom<&mut Parser> for Enum {
             ));
         }
 
-        let next = value.pop_front_err("Enum", "Expected more tokens")?;
+        let next = value.pop_front_err("Enum")?;
         let name = if let Token::Identifier(iden) = next {
             iden
         } else {
@@ -110,10 +110,10 @@ impl TryFrom<&mut Parser> for Variant {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        match value.pop_front_err("Variant", "Expected more tokens")? {
+        match value.pop_front_err("Variant")? {
             Token::Identifier(iden) => Ok(Variant::Simple(iden)),
             Token::ParenOpen => {
-                let name = match value.pop_front_err("Variant", "Expected more tokens")? {
+                let name = match value.pop_front_err("Variant")? {
                     Token::Identifier(iden) => iden,
                     token => {
                         return Err(error!(
@@ -134,7 +134,7 @@ impl TryFrom<&mut Parser> for Variant {
                     &Token::CurlyOpen => {
                         let fields = error!(StructFields::try_from(&mut *value), "Variant")?;
 
-                        match value.pop_front_err("Variant", "Expected more tokens")? {
+                        match value.pop_front_err("Variant")? {
                             Token::ParenClose => Ok(Variant::Struct(name, fields)),
                             token => Err(error!(
                                 "Variant",

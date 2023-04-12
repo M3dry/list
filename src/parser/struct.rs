@@ -13,7 +13,7 @@ impl TryFrom<&mut Parser> for Struct {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Struct", "Expected more tokens")?;
+        let next = value.pop_front_err("Struct")?;
         if next != Token::ParenOpen {
             return Err(error!(
                 "Struct",
@@ -21,7 +21,7 @@ impl TryFrom<&mut Parser> for Struct {
             ));
         }
 
-        let next = value.pop_front_err("Struct", "Expected more tokens")?;
+        let next = value.pop_front_err("Struct")?;
         if next != Token::Keyword(Keywords::Struct) {
             return Err(error!(
                 "Struct",
@@ -29,7 +29,7 @@ impl TryFrom<&mut Parser> for Struct {
             ));
         }
 
-        let next = value.pop_front_err("Struct", "Expected more tokens")?;
+        let next = value.pop_front_err("Struct")?;
         let name = if let Token::Identifier(iden) = next {
             iden
         } else {
@@ -61,7 +61,7 @@ impl TryFrom<&mut Parser> for Struct {
 
         let fields = error!(StructFields::try_from(&mut *value), "Struct")?;
 
-        let next = value.pop_front_err("Struct", "Expected more tokens")?;
+        let next = value.pop_front_err("Struct")?;
         if next != Token::ParenClose {
             return Err(error!(
                 "Struct",
@@ -104,7 +104,7 @@ impl TryFrom<&mut Parser> for StructFields {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("StructFields", "Expected more tokens")?;
+        let next = value.pop_front_err("StructFields")?;
         if next != Token::CurlyOpen {
             return Err(error!(
                 "StructFields",
@@ -156,11 +156,11 @@ impl TryFrom<&mut Parser> for StructField {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("StructField", "Expected more tokens")?;
+        let next = value.pop_front_err("StructField")?;
         if let Token::Identifier(iden) = next {
             let name = iden;
 
-            let next = value.pop_front_err("StructField", "Expected more tokens")?;
+            let next = value.pop_front_err("StructField")?;
             if next != Token::Keyword(Keywords::Arrow) {
                 return Err(error!(
                     "StructField",
