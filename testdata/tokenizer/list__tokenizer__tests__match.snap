@@ -67,7 +67,7 @@ Ok(
                 "Option",
             ),
             Keyword(
-                Arrow,
+                LeftArrow,
             ),
             Identifier(
                 "None",
@@ -78,7 +78,7 @@ Ok(
                 "Option",
             ),
             Keyword(
-                Arrow,
+                LeftArrow,
             ),
             Identifier(
                 "None",
@@ -98,7 +98,7 @@ Ok(
                 "Option",
             ),
             Keyword(
-                Arrow,
+                LeftArrow,
             ),
             Identifier(
                 "Some",
@@ -141,7 +141,7 @@ Ok(
                 "Option",
             ),
             Keyword(
-                Arrow,
+                LeftArrow,
             ),
             Identifier(
                 "Some",
@@ -181,7 +181,7 @@ Ok(
                 "x",
             ),
             Keyword(
-                Arrow,
+                LeftArrow,
             ),
             Literal(
                 Int(
@@ -195,7 +195,7 @@ Ok(
                 "y",
             ),
             Keyword(
-                Arrow,
+                LeftArrow,
             ),
             Literal(
                 String(
@@ -214,7 +214,7 @@ Ok(
                 "x",
             ),
             Keyword(
-                Arrow,
+                LeftArrow,
             ),
             Literal(
                 Int(
@@ -228,7 +228,7 @@ Ok(
                 "y",
             ),
             Keyword(
-                Arrow,
+                LeftArrow,
             ),
             Literal(
                 String(
@@ -256,7 +256,7 @@ Ok(
                 "x",
             ),
             Keyword(
-                Arrow,
+                LeftArrow,
             ),
             Identifier(
                 "var",
@@ -265,7 +265,7 @@ Ok(
                 "y",
             ),
             Keyword(
-                Arrow,
+                LeftArrow,
             ),
             Literal(
                 String(

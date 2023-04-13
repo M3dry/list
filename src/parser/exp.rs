@@ -2,7 +2,7 @@ use crate::tokenizer::{Keywords, Literals, Token, Int};
 
 use super::{
     error, lambda::Lambda, r#if::If, r#let::Let, r#match::Match, r#type::NamespacedType, Parser,
-    ParserError, ParserErrorStack, range::Range,
+    ParserError, ParserErrorStack, range::Range, r#do::Do,
 };
 
 #[derive(Debug)]
@@ -20,7 +20,7 @@ pub enum Exp {
     Positive(Box<Exp>),
     Infix(Box<Infix>),
     Range(super::range::Range),
-    // TODO: Do(Box<Do>),
+    Do(Box<Do>),
     Variable(String),
     Literal(Literals),
     TypeCreation(TypeCreation),
@@ -39,7 +39,7 @@ impl TryFrom<&mut Parser> for Exp {
             Token::Identifier(_) => {
                 if matches!(
                     value.nth(1),
-                    Some(&Token::Keyword(Keywords::Arrow) | &Token::CurlyOpen)
+                    Some(&Token::Keyword(Keywords::LeftArrow) | &Token::CurlyOpen)
                 ) {
                     Self::TypeCreation(error!(
                         TypeCreation::try_from(&mut *value),
@@ -137,10 +137,14 @@ impl TryFrom<&mut Parser> for Exp {
                         Lambda::try_from(&mut *value),
                         "Self"
                     )?)),
+                    Token::Keyword(Keywords::Do) => Self::Do(Box::new(error!(
+                        Do::try_from(&mut *value),
+                        "Self"
+                    )?)),
                     Token::Identifier(_) => {
                         if matches!(
                             value.nth(2),
-                            Some(&Token::Keyword(Keywords::Arrow) | &Token::CurlyOpen)
+                            Some(&Token::Keyword(Keywords::LeftArrow) | &Token::CurlyOpen)
                         ) {
                             Self::TypeCreation(error!(
                                 TypeCreation::try_from(&mut *value),
@@ -256,6 +260,7 @@ impl ToString for Exp {
             Self::Negation(exp) => format!("{{-{{{}}}}}", exp.to_string()),
             Self::Infix(infix) => format!("{{{}}}", infix.to_string()),
             Self::Range(range) => range.to_string(),
+            Self::Do(r#do) => format!("{}", r#do.to_string()),
             Self::Variable(var) => var.to_string(),
             Self::Literal(literal) => literal.to_string(),
             Self::TypeCreation(creation) => format!("{{{}}}", creation.to_string()),
@@ -374,7 +379,7 @@ impl TryFrom<&mut Parser> for TypeCreation {
                     };
 
                     let next = value.pop_front_err("TypeCreation")?;
-                    if next != Token::Keyword(Keywords::Arrow) {
+                    if next != Token::Keyword(Keywords::LeftArrow) {
                         return Err(error!(
                             "TypeCreation",
                             format!("Expected arrow keyword, got {next:#?}")

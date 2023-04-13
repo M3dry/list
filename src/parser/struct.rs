@@ -155,7 +155,7 @@ impl TryFrom<&mut Parser> for StructField {
             let name = iden;
 
             let next = value.pop_front_err("StructField")?;
-            if next != Token::Keyword(Keywords::Arrow) {
+            if next != Token::Keyword(Keywords::LeftArrow) {
                 return Err(error!(
                     "StructField",
                     format!("Expected arror keyword, got {next:#?}")

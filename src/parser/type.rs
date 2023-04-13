@@ -235,7 +235,7 @@ impl TryFrom<&mut Parser> for NamespacedType {
         Ok(
             match value.pop_front_err("NamespacedType")? {
                 Token::Identifier(iden)
-                    if value.first() == Some(&Token::Keyword(Keywords::Arrow)) =>
+                    if value.first() == Some(&Token::Keyword(Keywords::LeftArrow)) =>
                 {
                     value.pop_front();
                     NamespacedType::Space(

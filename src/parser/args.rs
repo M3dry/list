@@ -29,7 +29,7 @@ impl TryFrom<&mut Parser> for Arg {
         };
 
         let next = value.first();
-        if next != Some(&Token::Keyword(Keywords::Arrow)) {
+        if next != Some(&Token::Keyword(Keywords::LeftArrow)) {
             return Ok(Arg::Simple(name));
         }
         value.pop_front();

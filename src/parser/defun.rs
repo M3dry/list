@@ -48,7 +48,7 @@ impl TryFrom<&mut Parser> for Defun {
         let args = error!(ArgsTyped::try_from(&mut *value), "Defun")?;
 
         let next = value.pop_front_err("Defun")?;
-        if next != Token::Keyword(Keywords::Arrow) {
+        if next != Token::Keyword(Keywords::LeftArrow) {
             return Err(error!(
                 "Defun arrow",
                 format!("Expected Arrow keyword, got {next:#?}"),

@@ -59,7 +59,7 @@ impl TryFrom<&mut Parser> for UsePath {
             match value.pop_front_err("UsePath")? {
                 Token::Char('*') => Self::All,
                 Token::Identifier(name)
-                    if value.first() == Some(&Token::Keyword(Keywords::Arrow)) =>
+                    if value.first() == Some(&Token::Keyword(Keywords::LeftArrow)) =>
                 {
                     value.pop_front();
                     Self::Path(

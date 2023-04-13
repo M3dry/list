@@ -18,7 +18,7 @@ Ok(
                 "x",
             ),
             Keyword(
-                Arrow,
+                LeftArrow,
             ),
             Type(
                 I32,
@@ -27,7 +27,7 @@ Ok(
                 "y",
             ),
             Keyword(
-                Arrow,
+                LeftArrow,
             ),
             Type(
                 String,
@@ -66,7 +66,7 @@ Ok(
                 "x",
             ),
             Keyword(
-                Arrow,
+                LeftArrow,
             ),
             Char(
                 ':',
@@ -78,7 +78,7 @@ Ok(
                 "y",
             ),
             Keyword(
-                Arrow,
+                LeftArrow,
             ),
             Char(
                 ':',

@@ -158,7 +158,7 @@ impl TryFrom<&mut Parser> for Pattern {
                 )
             }
             iden @ Token::Identifier(_)
-                if value.first() == Some(&Token::Keyword(Keywords::Arrow)) =>
+                if value.first() == Some(&Token::Keyword(Keywords::LeftArrow)) =>
             {
                 value.tokens.push_front(iden);
                 Self::Enum(error!(NamespacedType::try_from(&mut *value), "Pattern")?)
@@ -261,7 +261,7 @@ impl TryFrom<&mut Parser> for Pattern {
                                             break Self::Struct(namespace, fields);
                                         }
 
-                                        if value.nth(1) == Some(&Token::Keyword(Keywords::Arrow)) {
+                                        if value.nth(1) == Some(&Token::Keyword(Keywords::LeftArrow)) {
                                             let field = match value.pop_front_err("Patter")? {
                                                 Token::Identifier(iden) => iden,
                                                 token => {

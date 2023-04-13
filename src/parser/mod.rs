@@ -11,6 +11,7 @@ pub mod r#match;
 pub mod r#struct;
 pub mod r#type;
 pub mod range;
+pub mod r#do;
 
 use std::collections::VecDeque;
 

@@ -73,7 +73,7 @@ Ok(
                 "x",
             ),
             Keyword(
-                Arrow,
+                LeftArrow,
             ),
             Char(
                 ':',
@@ -85,7 +85,7 @@ Ok(
                 "y",
             ),
             Keyword(
-                Arrow,
+                LeftArrow,
             ),
             Type(
                 I32,

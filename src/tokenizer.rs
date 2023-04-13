@@ -94,7 +94,10 @@ pub(crate) enum Keywords {
     Struct,
     Enum,
     Use,
-    Arrow,
+    LeftArrow,
+    RightArrow,
+    Return,
+    Do,
     Mut,
     Not,
     And,
@@ -154,6 +157,10 @@ impl FromStr for Tokens {
                 '(' => tokens.push(Token::ParenOpen),
                 ')' => tokens.push(Token::ParenClose),
                 '[' => tokens.push(Token::BracketOpen),
+                '<' if chars.peek() == Some(&'-') => {
+                    chars.next();
+                    tokens.push(Token::Keyword(Keywords::RightArrow))
+                }
                 '<' => tokens.push(Token::AngleBracketOpen),
                 '>' => tokens.push(Token::AngleBracketClose),
                 ']' => tokens.push(Token::BracketClose),
@@ -198,7 +205,7 @@ impl FromStr for Tokens {
                 ),
                 '-' if chars.peek() == Some(&'>') => {
                     chars.next();
-                    tokens.push(Token::Keyword(Keywords::Arrow))
+                    tokens.push(Token::Keyword(Keywords::LeftArrow))
                 }
                 char if char.is_ascii_digit() => tokens.push(Token::Literal(Literals::Int(Int(
                     false,
@@ -260,6 +267,8 @@ fn token_from_str(str: &str) -> Vec<Token> {
         "enum" => vec![Token::Keyword(Keywords::Enum)],
         "use" => vec![Token::Keyword(Keywords::Use)],
         "mut" => vec![Token::Keyword(Keywords::Mut)],
+        "return" => vec![Token::Keyword(Keywords::Return)],
+        "do" => vec![Token::Keyword(Keywords::Do)],
         "not" => vec![Token::Keyword(Keywords::Not)],
         "and" => vec![Token::Keyword(Keywords::And)],
         "or" => vec![Token::Keyword(Keywords::Or)],
@@ -310,7 +319,7 @@ fn check_arrow(chars: &mut Peekable<Chars>) -> Result<Triple, &'static str> {
             while !matches!(chars.next(), Some('\n') | None) {}
             Ok(Triple::None)
         }
-        Some('>') => Ok(Triple::Token(Token::Keyword(Keywords::Arrow))),
+        Some('>') => Ok(Triple::Token(Token::Keyword(Keywords::LeftArrow))),
         Some(char) => Ok(Triple::Char(char)),
         _ => Err("Expected more chars"),
     }
