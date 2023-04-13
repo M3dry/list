@@ -12,6 +12,7 @@ pub(crate) enum Token {
     Literal(Literals),
     Keyword(Keywords),
     Type(BuiltinTypes),
+    DoubleDot,
     Ref,
     Char(char),
     Slash,
@@ -33,8 +34,39 @@ impl From<Vec<Token>> for Tokens {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+pub struct Int(pub bool, pub u128);
+
+impl Int {
+    fn digs(start: u128, chars: &mut Peekable<Chars>) -> u128 {
+        let mut num = start;
+
+        loop {
+            match chars.peek() {
+                Some(c) => match c.to_digit(10) {
+                    Some(dig) => {
+                        chars.next();
+                        num = dig as u128 + num * 10
+                    }
+                    None => break num,
+                },
+                None => break num,
+            }
+        }
+    }
+}
+
+impl ToString for Int {
+    fn to_string(&self) -> String {
+        match self {
+            Self(true, num) => format!("-{}", &num.to_string()),
+            Self(false, num) => num.to_string(),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub enum Literals {
-    Int(bool, u128),
+    Int(Int),
     String(String),
     Char(char),
     Bool(bool),
@@ -43,12 +75,11 @@ pub enum Literals {
 impl ToString for Literals {
     fn to_string(&self) -> String {
         match self {
-            Literals::Int(true, num) => format!("-{}", &num.to_string()),
-            Literals::Int(false, num) => num.to_string(),
-            Literals::String(str) => format!(r#""{str}""#),
-            Literals::Char(char) => format!("'{char}'"),
-            Literals::Bool(true) => "true".to_string(),
-            Literals::Bool(false) => "false".to_string(),
+            Self::Int(int) => int.to_string(),
+            Self::String(str) => format!(r#""{str}""#),
+            Self::Char(char) => format!("'{char}'"),
+            Self::Bool(true) => "true".to_string(),
+            Self::Bool(false) => "false".to_string(),
         }
     }
 }
@@ -158,27 +189,29 @@ impl FromStr for Tokens {
                     )));
                 }
                 '&' => tokens.push(Token::Ref),
-                char if char.is_ascii_alphanumeric() || char == '-' || char == '_' =>
-                {
-                    let mut chs = vec![];
-
-                    if char == '-' {
-                        match check_arrow(&mut chars)? {
-                            Triple::Token(token) => {
-                                tokens.push(token);
-                                continue 'l;
-                            }
-                            Triple::Char(char) => {
-                                chs.push(char);
-                            }
-                            Triple::None => {}
-                        }
-                    } else {
-                        chs.push(char)
-                    }
+                '.' if chars.peek() == Some(&'.') => {
+                    chars.next();
+                    tokens.push(Token::DoubleDot)
+                }
+                '-' if matches!(chars.peek(), Some(c) if c.is_ascii_digit()) => tokens.push(
+                    Token::Literal(Literals::Int(Int(true, Int::digs(0, &mut chars)))),
+                ),
+                '-' if chars.peek() == Some(&'>') => {
+                    chars.next();
+                    tokens.push(Token::Keyword(Keywords::Arrow))
+                }
+                char if char.is_ascii_digit() => tokens.push(Token::Literal(Literals::Int(Int(
+                    false,
+                    Int::digs(char.to_digit(10).unwrap() as u128, &mut chars),
+                )))),
+                char if char.is_ascii_alphanumeric() || char == '_' => {
+                    let mut chs = vec![char];
 
                     while let Some(char) = chars.peek() {
-                        if !char.is_ascii_alphanumeric() && *char != '-' && *char != '_'
+                        if !char.is_ascii_alphanumeric()
+                            && *char != '-'
+                            && *char != '_'
+                            && *char != '!'
                         {
                             break;
                         } else if *char == '-' {
@@ -248,20 +281,6 @@ fn token_from_str(str: &str) -> Vec<Token> {
         "string" => vec![Token::Type(BuiltinTypes::String)],
         "char" => vec![Token::Type(BuiltinTypes::Char)],
         "bool" => vec![Token::Type(BuiltinTypes::Bool)],
-        arrow if arrow.len() >= 2 && &arrow[..2] == "->" => {
-            let mut ret = vec![Token::Keyword(Keywords::Arrow)];
-            ret.append(&mut token_from_str(&str[2..]));
-            ret
-        }
-        num if num.len() > 1 && &num[..1] == "-" && num[1..].parse::<u128>().is_ok() => {
-            vec![Token::Literal(Literals::Int(
-                true,
-                num[1..].parse().unwrap(),
-            ))]
-        }
-        num if num.parse::<u128>().is_ok() => {
-            vec![Token::Literal(Literals::Int(false, num.parse().unwrap()))]
-        }
         identifier
             if identifier.len() > 0
                 && identifier.chars().all(|c| {

@@ -7,35 +7,43 @@ Ok(
     Match {
         against: Literal(
             Int(
-                false,
-                100,
+                Int(
+                    false,
+                    100,
+                ),
             ),
         ),
         branches: [
             Branch {
                 pattern: Literal(
                     Int(
-                        false,
-                        10,
+                        Int(
+                            false,
+                            10,
+                        ),
                     ),
                 ),
                 check: None,
                 ret: Literal(
                     Int(
-                        false,
-                        1,
+                        Int(
+                            false,
+                            1,
+                        ),
                     ),
                 ),
             },
             Branch {
-                pattern: Var(
+                pattern: Variable(
                     "_",
                 ),
                 check: None,
                 ret: Literal(
                     Int(
-                        false,
-                        0,
+                        Int(
+                            false,
+                            0,
+                        ),
                     ),
                 ),
             },
@@ -58,39 +66,37 @@ Ok(
         ),
         branches: [
             Branch {
-                pattern: Type(
-                    Simple(
-                        Space(
-                            "Option",
-                            Final(
-                                "None",
-                            ),
+                pattern: Enum(
+                    Space(
+                        "Option",
+                        Final(
+                            "None",
                         ),
                     ),
                 ),
                 check: None,
                 ret: Literal(
                     Int(
-                        false,
-                        1,
+                        Int(
+                            false,
+                            1,
+                        ),
                     ),
                 ),
             },
             Branch {
-                pattern: Type(
-                    Vars(
-                        Space(
-                            "Option",
-                            Final(
-                                "Some",
-                            ),
+                pattern: EnumVars(
+                    Space(
+                        "Option",
+                        Final(
+                            "Some",
                         ),
-                        [
-                            Variable(
-                                "var",
-                            ),
-                        ],
                     ),
+                    [
+                        Variable(
+                            "var",
+                        ),
+                    ],
                 ),
                 check: Some(
                     Infix(
@@ -100,8 +106,10 @@ Ok(
                             ),
                             Literal(
                                 Int(
-                                    false,
-                                    10,
+                                    Int(
+                                        false,
+                                        10,
+                                    ),
                                 ),
                             ),
                         ),
@@ -109,32 +117,34 @@ Ok(
                 ),
                 ret: Literal(
                     Int(
-                        false,
-                        0,
+                        Int(
+                            false,
+                            0,
+                        ),
                     ),
                 ),
             },
             Branch {
-                pattern: Type(
-                    Vars(
-                        Space(
-                            "Option",
-                            Final(
-                                "Some",
-                            ),
+                pattern: EnumVars(
+                    Space(
+                        "Option",
+                        Final(
+                            "Some",
                         ),
-                        [
-                            Variable(
-                                "_",
-                            ),
-                        ],
                     ),
+                    [
+                        Variable(
+                            "_",
+                        ),
+                    ],
                 ),
                 check: None,
                 ret: Literal(
                     Int(
-                        false,
-                        3,
+                        Int(
+                            false,
+                            3,
+                        ),
                     ),
                 ),
             },
@@ -142,7 +152,7 @@ Ok(
     },
 )
 
-(match StructType { x->100 y->"hello" } (StructType { x->100 y->"hi" } 3) (StructType { x->var y->"hello" } var) (_ 0))
+(match (StructType { x->100 y->"hello" }) ((StructType { x->100 y->"hi" }) 3) ((StructType { x->var y->"hello" }) var) (_ 0))
 Ok(
     Match {
         against: TypeCreation(
@@ -155,8 +165,10 @@ Ok(
                         "x",
                         Literal(
                             Int(
-                                false,
-                                100,
+                                Int(
+                                    false,
+                                    100,
+                                ),
                             ),
                         ),
                     ),
@@ -173,21 +185,25 @@ Ok(
         ),
         branches: [
             Branch {
-                pattern: Type(
-                    Struct(
-                        Final(
-                            "StructType",
-                        ),
-                        [
+                pattern: Struct(
+                    Final(
+                        "StructType",
+                    ),
+                    [
+                        Left(
                             (
                                 "x",
                                 Literal(
                                     Int(
-                                        false,
-                                        100,
+                                        Int(
+                                            false,
+                                            100,
+                                        ),
                                     ),
                                 ),
                             ),
+                        ),
+                        Left(
                             (
                                 "y",
                                 Literal(
@@ -196,30 +212,34 @@ Ok(
                                     ),
                                 ),
                             ),
-                        ],
-                    ),
+                        ),
+                    ],
                 ),
                 check: None,
                 ret: Literal(
                     Int(
-                        false,
-                        3,
+                        Int(
+                            false,
+                            3,
+                        ),
                     ),
                 ),
             },
             Branch {
-                pattern: Type(
-                    Struct(
-                        Final(
-                            "StructType",
-                        ),
-                        [
+                pattern: Struct(
+                    Final(
+                        "StructType",
+                    ),
+                    [
+                        Left(
                             (
                                 "x",
                                 Variable(
                                     "var",
                                 ),
                             ),
+                        ),
+                        Left(
                             (
                                 "y",
                                 Literal(
@@ -228,8 +248,8 @@ Ok(
                                     ),
                                 ),
                             ),
-                        ],
-                    ),
+                        ),
+                    ],
                 ),
                 check: None,
                 ret: Variable(
@@ -237,14 +257,16 @@ Ok(
                 ),
             },
             Branch {
-                pattern: Var(
+                pattern: Variable(
                     "_",
                 ),
                 check: None,
                 ret: Literal(
                     Int(
-                        false,
-                        0,
+                        Int(
+                            false,
+                            0,
+                        ),
                     ),
                 ),
             },

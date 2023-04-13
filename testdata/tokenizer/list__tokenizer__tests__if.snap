@@ -17,14 +17,18 @@ Ok(
             ),
             Literal(
                 Int(
-                    false,
-                    10,
+                    Int(
+                        false,
+                        10,
+                    ),
                 ),
             ),
             Literal(
                 Int(
-                    false,
-                    4,
+                    Int(
+                        false,
+                        4,
+                    ),
                 ),
             ),
             ParenClose,
@@ -46,21 +50,27 @@ Ok(
             ),
             Literal(
                 Int(
-                    false,
-                    10,
+                    Int(
+                        false,
+                        10,
+                    ),
                 ),
             ),
             Literal(
                 Int(
-                    false,
-                    5,
+                    Int(
+                        false,
+                        5,
+                    ),
                 ),
             ),
             ParenClose,
             Literal(
                 Int(
-                    false,
-                    10,
+                    Int(
+                        false,
+                        10,
+                    ),
                 ),
             ),
             ParenOpen,
@@ -69,14 +79,18 @@ Ok(
             ),
             Literal(
                 Int(
-                    false,
-                    4,
+                    Int(
+                        false,
+                        4,
+                    ),
                 ),
             ),
             Literal(
                 Int(
-                    false,
-                    10,
+                    Int(
+                        false,
+                        10,
+                    ),
                 ),
             ),
             ParenClose,
@@ -103,14 +117,18 @@ Ok(
             ),
             Literal(
                 Int(
-                    false,
-                    1,
+                    Int(
+                        false,
+                        1,
+                    ),
                 ),
             ),
             Literal(
                 Int(
-                    false,
-                    10,
+                    Int(
+                        false,
+                        10,
+                    ),
                 ),
             ),
             ParenClose,
@@ -120,8 +138,10 @@ Ok(
             ),
             Literal(
                 Int(
-                    false,
-                    100,
+                    Int(
+                        false,
+                        100,
+                    ),
                 ),
             ),
             ParenOpen,
@@ -130,14 +150,18 @@ Ok(
             ),
             Literal(
                 Int(
-                    false,
-                    1,
+                    Int(
+                        false,
+                        1,
+                    ),
                 ),
             ),
             Literal(
                 Int(
-                    false,
-                    10,
+                    Int(
+                        false,
+                        10,
+                    ),
                 ),
             ),
             ParenClose,
@@ -145,8 +169,10 @@ Ok(
             ParenClose,
             Literal(
                 Int(
-                    false,
-                    100,
+                    Int(
+                        false,
+                        100,
+                    ),
                 ),
             ),
             ParenOpen,
@@ -155,14 +181,18 @@ Ok(
             ),
             Literal(
                 Int(
-                    false,
-                    100,
+                    Int(
+                        false,
+                        100,
+                    ),
                 ),
             ),
             Literal(
                 Int(
-                    false,
-                    200,
+                    Int(
+                        false,
+                        200,
+                    ),
                 ),
             ),
             ParenClose,

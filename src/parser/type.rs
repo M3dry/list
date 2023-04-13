@@ -1,4 +1,4 @@
-use crate::tokenizer::{BuiltinTypes, Keywords, Literals, Token};
+use crate::tokenizer::{BuiltinTypes, Keywords, Literals, Token, Int};
 
 use super::{error, Parser, ParserError, ParserErrorStack};
 
@@ -58,7 +58,7 @@ impl TryFrom<&mut Parser> for Type {
                 match value.pop_front_err("Type")? {
                     Token::BracketClose => Ok(Type::Array(r#type, None)),
                     Token::Char(';') => {
-                        let Token::Literal(Literals::Int(neg, len)) =
+                        let Token::Literal(Literals::Int(Int(neg, len))) =
                             value.pop_front_err("Type")?
                         else {
                                 return Err(error!("Type", format!("")))

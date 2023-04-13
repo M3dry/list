@@ -8,14 +8,18 @@ Ok(
         Add(
             Literal(
                 Int(
-                    false,
-                    4,
+                    Int(
+                        false,
+                        4,
+                    ),
                 ),
             ),
             Literal(
                 Int(
-                    false,
-                    1,
+                    Int(
+                        false,
+                        1,
+                    ),
                 ),
             ),
         ),
@@ -28,8 +32,10 @@ Ok(
         Equality(
             Literal(
                 Int(
-                    false,
-                    10,
+                    Int(
+                        false,
+                        10,
+                    ),
                 ),
             ),
             Variable(
@@ -48,22 +54,28 @@ Ok(
         [
             Literal(
                 Int(
-                    false,
-                    100,
+                    Int(
+                        false,
+                        100,
+                    ),
                 ),
             ),
             Infix(
                 Add(
                     Literal(
                         Int(
-                            false,
-                            4,
+                            Int(
+                                false,
+                                4,
+                            ),
                         ),
                     ),
                     Literal(
                         Int(
-                            false,
-                            10,
+                            Int(
+                                false,
+                                10,
+                            ),
                         ),
                     ),
                 ),
@@ -83,22 +95,28 @@ Ok(
                 [
                     Literal(
                         Int(
-                            false,
-                            69,
+                            Int(
+                                false,
+                                69,
+                            ),
                         ),
                     ),
                     Infix(
                         Add(
                             Literal(
                                 Int(
-                                    false,
-                                    1,
+                                    Int(
+                                        false,
+                                        1,
+                                    ),
                                 ),
                             ),
                             Literal(
                                 Int(
-                                    false,
-                                    10,
+                                    Int(
+                                        false,
+                                        10,
+                                    ),
                                 ),
                             ),
                         ),
@@ -112,14 +130,18 @@ Ok(
                 [
                     Literal(
                         Int(
-                            false,
-                            10,
+                            Int(
+                                false,
+                                10,
+                            ),
                         ),
                     ),
                     Literal(
                         Int(
-                            false,
-                            100,
+                            Int(
+                                false,
+                                100,
+                            ),
                         ),
                     ),
                 ],
@@ -169,20 +191,26 @@ Ok(
         [
             Literal(
                 Int(
-                    false,
-                    10,
+                    Int(
+                        false,
+                        10,
+                    ),
                 ),
             ),
             Literal(
                 Int(
-                    false,
-                    20,
+                    Int(
+                        false,
+                        20,
+                    ),
                 ),
             ),
             Literal(
                 Int(
-                    false,
-                    10,
+                    Int(
+                        false,
+                        10,
+                    ),
                 ),
             ),
         ],

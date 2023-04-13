@@ -20,14 +20,18 @@ Ok(
             ),
             Literal(
                 Int(
-                    false,
-                    10,
+                    Int(
+                        false,
+                        10,
+                    ),
                 ),
             ),
             Literal(
                 Int(
-                    false,
-                    20,
+                    Int(
+                        false,
+                        20,
+                    ),
                 ),
             ),
             ParenClose,
@@ -59,14 +63,18 @@ Ok(
             ),
             Literal(
                 Int(
-                    false,
-                    10,
+                    Int(
+                        false,
+                        10,
+                    ),
                 ),
             ),
             Literal(
                 Int(
-                    false,
-                    20,
+                    Int(
+                        false,
+                        20,
+                    ),
                 ),
             ),
             ParenClose,
@@ -81,14 +89,18 @@ Ok(
             ),
             Literal(
                 Int(
-                    false,
-                    10,
+                    Int(
+                        false,
+                        10,
+                    ),
                 ),
             ),
             Literal(
                 Int(
-                    false,
-                    10,
+                    Int(
+                        false,
+                        10,
+                    ),
                 ),
             ),
             ParenClose,
@@ -106,8 +118,10 @@ Ok(
             ),
             Literal(
                 Int(
-                    false,
-                    0,
+                    Int(
+                        false,
+                        0,
+                    ),
                 ),
             ),
             ParenClose,

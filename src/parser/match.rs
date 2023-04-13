@@ -1,9 +1,9 @@
+use either::Either;
+
 use crate::tokenizer::{Keywords, Literals, Token};
 
 use super::{
-    error,
-    exp::{Exp, TypeCreation},
-    Parser, ParserError, ParserErrorStack,
+    error, exp::Exp, r#type::NamespacedType, range::Range, Parser, ParserError, ParserErrorStack,
 };
 
 #[derive(Debug)]
@@ -130,114 +130,275 @@ impl ToString for Branch {
 }
 
 #[derive(Debug)]
-enum Pattern {
-    Type(TypeCreation),
+pub enum Pattern {
+    Variable(String),
     Literal(Literals),
-    Var(String),
+    Touple(Vec<Self>),
+    Array(Vec<Self>),
+    Capture(String, Box<Self>),
+    Range(Range),
+    Enum(NamespacedType),
+    EnumVars(NamespacedType, Vec<Self>),
+    Struct(NamespacedType, Vec<Either<(String, Self), String>>),
+    Rest,
+    Or(Vec<Self>),
 }
 
 impl TryFrom<&mut Parser> for Pattern {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        if value.first() == Some(&Token::ParenOpen) {
-            let ret = if matches!(
-                value.nth(2),
-                Some(&Token::Keyword(Keywords::Arrow) | &Token::CurlyOpen)
-            ) {
-                let type_creation = error!(TypeCreation::try_from(&mut *value), "Pattern")?;
-                match type_creation {
-                    TypeCreation::Vars(_, args)
-                        if !args
-                            .iter()
-                            .all(|arg| matches!(arg, Exp::Literal(_) | Exp::Variable(_))) =>
-                    {
-                        return Err(error!(
-                            "Pattern",
-                            format!("Expected all args to be literals or identifiers")
-                        ))
-                    }
-                    TypeCreation::Struct(_, fields)
-                        if !fields.iter().all(|(_, exp)| {
-                            matches!(exp, Exp::Literal(_) | Exp::Variable(_))
-                        }) =>
-                    {
-                        return Err(error!(
-                            "Pattern",
-                            format!("Expected all fields to be literals or identifiers")
-                        ))
-                    }
-                    _ => (),
-                };
-                return Ok(Pattern::Type(type_creation));
-            } else {
+        let next = value.pop_front_err("Pattern")?;
+        Ok(match next {
+            Token::Identifier(iden) if matches!(value.first(), Some(&Token::Char('@'))) => {
                 value.pop_front();
-                Ok(
-                    match value.pop_front_err("Pattern")? {
-                        Token::Literal(literal) => Pattern::Literal(literal),
-                        Token::Identifier(name) => Pattern::Var(name),
-                        _ => todo!(),
-                    },
+                Self::Capture(
+                    iden,
+                    Box::new(error!(Self::try_from(&mut *value), "Pattern")?),
                 )
-            };
-
-            let next = value.pop_front_err("Pattern")?;
-            if next != Token::ParenClose {
-                return Err(error!(
-                    "Pattern",
-                    format!("Expected parenClose, got {next:#?}")
-                ));
             }
+            iden @ Token::Identifier(_)
+                if value.first() == Some(&Token::Keyword(Keywords::Arrow)) =>
+            {
+                value.tokens.push_front(iden);
+                Self::Enum(error!(NamespacedType::try_from(&mut *value), "Pattern")?)
+            }
+            Token::Identifier(iden) => Self::Variable(iden),
+            lit @ Token::Literal(Literals::Int(..)) if value.first() == Some(&Token::DoubleDot) => {
+                value.tokens.push_front(lit);
 
-            ret
-        } else if matches!(
-            value.nth(1),
-            Some(&Token::Keyword(Keywords::Arrow) | &Token::CurlyOpen)
-        ) {
-            let type_creation = error!(TypeCreation::try_from(&mut *value), "Pattern")?;
-            match type_creation {
-                TypeCreation::Vars(_, args)
-                    if !args
-                        .iter()
-                        .all(|arg| matches!(arg, Exp::Literal(_) | Exp::Variable(_))) =>
-                {
-                    return Err(error!(
-                        "Pattern",
-                        format!("Expected all args to be literals or identifiers")
-                    ))
-                }
-                TypeCreation::Struct(_, fields)
-                    if !fields
-                        .iter()
-                        .all(|(_, exp)| matches!(exp, Exp::Literal(_) | Exp::Variable(_))) =>
-                {
-                    return Err(error!(
-                        "Pattern",
-                        format!("Expected all fields to be literals or identifiers")
-                    ))
-                }
-                _ => (),
-            };
+                Self::Range(error!(Range::try_from(&mut *value), "Pattern")?)
+            }
+            Token::Literal(literal) => Self::Literal(literal),
+            Token::BracketOpen => {
+                let mut elems = vec![];
 
-            return Ok(Pattern::Type(type_creation));
-        } else {
-            Ok(
-                match value.pop_front_err("Pattern")? {
-                    Token::Literal(literal) => Pattern::Literal(literal),
-                    Token::Identifier(name) => Pattern::Var(name),
+                loop {
+                    let peek = value
+                        .first()
+                        .ok_or(error!("Pattern", format!("Expected more tokens")))?;
+
+                    match peek {
+                        Token::BracketClose => {
+                            value.pop_front();
+                            break;
+                        }
+                        _ => elems.push(error!(Self::try_from(&mut *value), "Pattern")?),
+                    }
+                }
+
+                Self::Array(elems)
+            }
+            Token::AngleBracketOpen => {
+                let mut elems = vec![];
+
+                loop {
+                    let peek = value
+                        .first()
+                        .ok_or(error!("Pattern", format!("Expected more tokens")))?;
+
+                    match peek {
+                        Token::AngleBracketClose => {
+                            value.pop_front();
+                            break;
+                        }
+                        _ => elems.push(error!(Self::try_from(&mut *value), "Pattern")?),
+                    }
+                }
+
+                Self::Touple(elems)
+            }
+            Token::DoubleDot => Self::Rest,
+            Token::ParenOpen => {
+                let next = value.pop_front_err("Pattern")?;
+                let ret = match next {
+                    Token::Keyword(Keywords::Or) => {
+                        let mut pats = vec![];
+
+                        loop {
+                            let peek = value
+                                .first()
+                                .ok_or(error!("Pattern", format!("Expected more tokens")))?;
+                            if peek == &Token::ParenClose {
+                                value.pop_front();
+                                return Ok(Self::Or(pats));
+                            }
+
+                            pats.push(error!(Self::try_from(&mut *value), "Pattern")?)
+                        }
+                    }
+                    iden @ Token::Identifier(_)
+                        if value.first() != Some(&Token::ParenClose) =>
+                    {
+                        value.tokens.push_front(iden);
+                        let namespace = error!(NamespacedType::try_from(&mut *value), "Pattern")?;
+
+                        return Ok(
+                            match value
+                                .first()
+                                .ok_or(error!("Pattern", format!("Expected more tokens")))?
+                            {
+                                Token::ParenClose => {
+                                    value.pop_front();
+                                    Self::Enum(namespace)
+                                }
+                                Token::CurlyOpen => {
+                                    value.pop_front();
+                                    let mut fields = vec![];
+
+                                    loop {
+                                        let peek = value.first().ok_or(error!(
+                                            "Pattern",
+                                            format!("Expected more tokens")
+                                        ))?;
+                                        if peek == &Token::CurlyClose {
+                                            value.pop_front();
+                                            let next = value.pop_front_err("Pattern")?;
+                                            if next != Token::ParenClose {
+                                                return Err(error!("Pattern", format!("Expected parenClose, got {next:#?}")))
+                                            }
+
+                                            break Self::Struct(namespace, fields);
+                                        }
+
+                                        if value.nth(1) == Some(&Token::Keyword(Keywords::Arrow)) {
+                                            let field = match value.pop_front_err("Patter")? {
+                                                Token::Identifier(iden) => iden,
+                                                token => {
+                                                    return Err(error!(
+                                                        "Pattern",
+                                                        format!("Expected iden, got {token:#?}")
+                                                    ))
+                                                }
+                                            };
+                                            value.pop_front();
+                                            let pat =
+                                                error!(Self::try_from(&mut *value), "Pattern")?;
+
+                                            fields.push(Either::Left((field, pat)))
+                                        } else {
+                                            match value.pop_front_err("Pattern")? {
+                                                Token::Identifier(iden) => {
+                                                    fields.push(Either::Right(iden))
+                                                }
+                                                token => {
+                                                    return Err(error!(
+                                                        "Pattern",
+                                                        format!("Expected iden, got {token:#?}")
+                                                    ))
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                _ => {
+                                    let mut pats = vec![];
+
+                                    loop {
+                                        let peek = value.first().ok_or(error!(
+                                            "Pattern",
+                                            format!("Expected more tokens")
+                                        ))?;
+                                        if peek == &Token::ParenClose {
+                                            value.pop_front();
+                                            break Self::EnumVars(namespace, pats);
+                                        }
+
+                                        pats.push(error!(Self::try_from(&mut *value), "Pattern")?)
+                                    }
+                                }
+                            },
+                        );
+                    }
+                    Token::Identifier(iden) => Self::Variable(iden),
+                    Token::Literal(literal) => Self::Literal(literal),
+                    Token::ParenOpen => error!(Self::try_from(&mut *value), "Pattern")?,
                     _ => todo!(),
-                },
-            )
-        }
+                };
+
+                let next = value.pop_front_err("Pattern")?;
+                if next != Token::ParenClose {
+                    return Err(error!(
+                        "Pattern",
+                        format!("Expected parenClose, got {next:#?}")
+                    ));
+                }
+
+                ret
+            }
+            _ => todo!(),
+        })
     }
 }
 
 impl ToString for Pattern {
     fn to_string(&self) -> String {
         match self {
-            Pattern::Type(type_creation) => format!("{}", type_creation.to_string()),
-            Pattern::Literal(literal) => format!("{}", literal.to_string()),
-            Pattern::Var(var) => format!("{var}"),
+            Self::Variable(var) => format!("{var}"),
+            Self::Literal(literal) => format!("{}", literal.to_string()),
+            Self::Touple(pats) => format!(
+                "({})",
+                &if pats.is_empty() {
+                    format!(", ")
+                } else {
+                    pats.iter().fold(String::new(), |str, pat| {
+                        format!("{str}, {}", pat.to_string())
+                    })
+                }[2..]
+            ),
+            Self::Array(pats) => format!(
+                "[{}]",
+                &if pats.is_empty() {
+                    format!(", ")
+                } else {
+                    pats.iter().fold(String::new(), |str, pat| {
+                        format!("{str}, {}", pat.to_string())
+                    })
+                }[2..]
+            ),
+            Self::Capture(capture, pat) => format!("{capture}@{}", pat.to_string()),
+            Self::Range(range) => format!("{}", range.to_string()),
+            Self::Enum(path) => format!("{}", path.to_string()),
+            Self::EnumVars(path, pats) => format!(
+                "{}({})",
+                path.to_string(),
+                &if pats.is_empty() {
+                    format!(", ")
+                } else {
+                    pats.iter().fold(String::new(), |str, pat| {
+                        format!("{str}, {}", pat.to_string())
+                    })
+                }[2..]
+            ),
+            Self::Struct(path, fields) => format!(
+                "{}{{{}}}",
+                path.to_string(),
+                &if fields.is_empty() {
+                    format!(", ")
+                } else {
+                    fields.iter().fold(String::new(), |str, field| {
+                        format!(
+                            "{str}, {}",
+                            match field {
+                                Either::Left((name, path)) =>
+                                    format!("{name}: {}", path.to_string()),
+                                Either::Right(name) => format!("{name}"),
+                            }
+                        )
+                    })
+                }[2..]
+            ),
+            Self::Rest => format!(".."),
+            Self::Or(ors) => format!(
+                "{}",
+                &if ors.is_empty() {
+                    format!("| ")
+                } else {
+                    ors.iter().fold(String::new(), |str, or| {
+                        format!("{str}| {}", or.to_string())
+                    })
+                }[2..]
+            ),
         }
     }
 }

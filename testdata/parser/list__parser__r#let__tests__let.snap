@@ -1,6 +1,6 @@
 ---
-source: src/parser.rs
-expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{:#?}\", Let::try_from\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+source: src/parser/let.rs
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{}\",\n                                |parser| format!(\"{:#?}\", Let::try_from (parser))\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
 ---
 (let (x (+ 10 20)) x)
 Ok(
@@ -8,30 +8,29 @@ Ok(
         vars: [
             (
                 "x",
-                Call(
-                    Call {
-                        func: Right(
-                            "+",
-                        ),
-                        params: [
-                            Literal(
+                Infix(
+                    Add(
+                        Literal(
+                            Int(
                                 Int(
                                     false,
                                     10,
                                 ),
                             ),
-                            Literal(
+                        ),
+                        Literal(
+                            Int(
                                 Int(
                                     false,
                                     20,
                                 ),
                             ),
-                        ],
-                    },
+                        ),
+                    ),
                 ),
             ),
         ],
-        body: Identifier(
+        body: Variable(
             "x",
         ),
     },
@@ -43,65 +42,65 @@ Ok(
         vars: [
             (
                 "x",
-                Call(
-                    Call {
-                        func: Right(
-                            "+",
-                        ),
-                        params: [
-                            Literal(
+                Infix(
+                    Add(
+                        Literal(
+                            Int(
                                 Int(
                                     false,
                                     10,
                                 ),
                             ),
-                            Literal(
+                        ),
+                        Literal(
+                            Int(
                                 Int(
                                     false,
                                     20,
                                 ),
                             ),
-                        ],
-                    },
+                        ),
+                    ),
                 ),
             ),
             (
                 "y",
-                Call(
-                    Call {
-                        func: Right(
-                            "=",
+                Infix(
+                    Equality(
+                        Literal(
+                            Int(
+                                Int(
+                                    false,
+                                    10,
+                                ),
+                            ),
                         ),
-                        params: [
-                            Literal(
+                        Literal(
+                            Int(
                                 Int(
                                     false,
                                     10,
                                 ),
                             ),
-                            Literal(
-                                Int(
-                                    false,
-                                    10,
-                                ),
-                            ),
-                        ],
-                    },
+                        ),
+                    ),
                 ),
             ),
         ],
         body: If(
             If {
-                condition: Identifier(
+                condition: Variable(
                     "y",
                 ),
-                true_branch: Identifier(
+                true_branch: Variable(
                     "x",
                 ),
                 false_branch: Literal(
                     Int(
-                        false,
-                        0,
+                        Int(
+                            false,
+                            0,
+                        ),
                     ),
                 ),
             },

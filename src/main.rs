@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use list::{parser::{Parser as lP, args::{Args as aArgs, ArgsTyped}, r#type::Type, file::File, r#enum::Enum, r#struct::Struct, r#match::Match, defun::Defun, exp::Exp, r#use::Use, lambda::Lambda}, tokenizer::Tokens};
+use list::{parser::{Parser as lP, args::{Args as aArgs, ArgsTyped}, r#type::Type, file::File, r#enum::Enum, r#struct::Struct, r#match::{Match, Pattern}, defun::Defun, exp::Exp, r#use::Use, lambda::Lambda}, tokenizer::Tokens};
 
 macro_rules! tostrrr {
     ($type:tt, $str:ident, $parser:ident) => {{
@@ -45,6 +45,7 @@ enum ParserType {
     Function { path: String },
     Expression { path: String },
     Lambda { path: String },
+    Pattern { path: String },
 }
 
 impl ParserType {
@@ -63,6 +64,7 @@ impl ParserType {
             Self::Function { .. } => tostrrr!(Defun, to_string, parser),
             Self::Expression { .. } => tostrrr!(Exp, to_string, parser),
             Self::Lambda { .. } => tostrrr!(Lambda, to_string, parser),
+            Self::Pattern { .. } => tostrrr!(Pattern, to_string, parser),
         }
     }
 
@@ -78,7 +80,8 @@ impl ParserType {
             | Self::Match { path }
             | Self::Function { path }
             | Self::Expression { path }
-            | Self::Lambda { path } => path,
+            | Self::Lambda { path }
+            | Self::Pattern { path } => path,
         }
     }
 }

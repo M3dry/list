@@ -10,6 +10,7 @@ pub mod r#let;
 pub mod r#match;
 pub mod r#struct;
 pub mod r#type;
+pub mod range;
 
 use std::collections::VecDeque;
 
@@ -42,10 +43,10 @@ macro_rules! error {
 
 macro_rules! snapshot {
     ($name:tt, $func:expr, $path:tt) => {
-        snapshot!($name, |parser| format!("{:#?}", $func(parser)), $path, "../testdata/parser/");
+        snapshot!($name, |parser| format!("{:#?}", $func(parser)), $path, "../../testdata/parser/");
     };
     ($name:tt, $func:expr, $path:tt, rust) => {
-        snapshot!($name, |parser| match $func(parser) { Ok(res) => res.to_string(), Err(err) => format!("{err:#?}") }, $path, "../testdata/rust/");
+        snapshot!($name, |parser| match $func(parser) { Ok(res) => res.to_string(), Err(err) => format!("{err:#?}") }, $path, "../../testdata/rust/");
     };
     ($name:tt, $func:expr, $path:tt, $out:literal) => {
         #[test]
