@@ -7,7 +7,7 @@ pub enum Type {
     Ref(Option<Lifetimes>, Box<Type>),
     RefMut(Option<Lifetimes>, Box<Type>),
     Builtin(BuiltinTypes),
-    Generic(String),
+    Generic(Generic),
     Custom(String),
     Complex(String, Vec<Type>),
     Array(Box<Type>, Option<usize>),
@@ -47,7 +47,10 @@ impl TryFrom<&mut Parser> for Type {
                 Box::new(error!(Type::try_from(&mut *value), "Type")?),
             )),
             Token::Type(builtin) => Ok(Type::Builtin(builtin)),
-            Token::Generic(generic) => Ok(Type::Generic(generic)),
+            Token::Char(':') => {
+                value.tokens.push_front(Token::Char(':'));
+                Ok(Type::Generic(error!(Generic::try_from(&mut *value), "Type")?))
+            },
             Token::Identifier(iden) => Ok(Type::Custom(iden)),
             Token::BracketOpen => {
                 let r#type = Box::new(error!(Type::try_from(&mut *value), "Type")?);
@@ -261,5 +264,100 @@ impl ToString for NamespacedType {
             Self::Space(name, namespaces) => format!("{name}::{}", namespaces.to_string()),
             Self::Final(name) => format!("{name}"),
         }
+    }
+}
+
+#[derive(Debug)]
+pub enum Generic {
+    Constrained {
+        name: String,
+        constraints: Constraints,
+    }, // TODO: constraints
+    Use(String),
+}
+
+impl TryFrom<&mut Parser> for Generic {
+    type Error = ParserError;
+
+    fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
+        let next = value.pop_front_err("Generic")?;
+        if !matches!(next, Token::Char(':')) {
+            return Err(error!(
+                "Generic",
+                format!("Expected char ':', got {next:#?}")
+            ));
+        }
+
+        let name = match value.pop_front_err("Generic")? {
+            Token::Identifier(iden) => iden,
+            token => {
+                return Err(error!(
+                    "Generic",
+                    format!("Expected identifier, got {token:#?}")
+                ))
+            }
+        };
+
+        if value.first() == Some(&Token::Slash) {
+            Ok(Self::Constrained {
+                name,
+                constraints: error!(Constraints::try_from(&mut *value), "Generic")?,
+            })
+        } else {
+            Ok(Self::Use(name))
+        }
+    }
+}
+
+impl ToString for Generic {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Constrained { name, constraints } => {
+                format!("{name}: {}", constraints.to_string())
+            }
+            Self::Use(name) => format!("{name}"),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Constraints(Vec<String>);
+
+impl TryFrom<&mut Parser> for Constraints {
+    type Error = ParserError;
+
+    fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
+        let next = value.pop_front_err("Constraints")?;
+        if next != Token::Slash {
+            return Err(error!(
+                "Constraints",
+                format!("Expected slash, got {next:#?}")
+            ));
+        }
+
+        let mut constraints = vec![];
+
+        loop {
+            let next = value.pop_front_err("Constraints")?;
+            match next {
+                Token::Slash => {
+                    value.pop_front();
+                    return Ok(Self(constraints));
+                }
+                Token::Identifier(iden) => constraints.push(iden),
+                token => {
+                    return Err(error!(
+                        "Constraints",
+                        format!("Expected slash or identifier, got {token:#?}")
+                    ))
+                }
+            }
+        }
+    }
+}
+
+impl ToString for Constraints {
+    fn to_string(&self) -> String {
+        todo!()
     }
 }

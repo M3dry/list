@@ -6,10 +6,10 @@ expression: "contents.lines().filter_map(|line|\n                if line != \"\"
 fn func(x: i32) -> String {"hello"}
 
 (pub defun func (x->i32 y->i128)->i64 (+ x y))
-pub fn func(x: i32, y: i128) -> i64 {+(x, y)}
+pub fn func(x: i32, y: i128) -> i64 {{(x) + (y)}}
 
 (crate defun func (:t x->:t y->:t)->:t x)
 pub(crate) fn func<t>(x: t, y: t) -> t {x}
 
 (defun func ()-><[i32] string> (func))
-fn func() -> ([i32], String) {func()}
+fn func() -> ([i32], String) {{func()}}

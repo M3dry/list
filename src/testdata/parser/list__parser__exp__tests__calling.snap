@@ -1,78 +1,98 @@
 ---
 source: src/parser/exp.rs
-expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{:#?}\", Exp::try_from\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{}\",\n                                |parser| format!(\"{:#?}\", Exp::try_from (parser))\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
 ---
 (+ 4 1)
 Ok(
-    Call(
-        Call {
-            func: Right(
-                "+",
+    Infix(
+        Add(
+            Literal(
+                Int(
+                    false,
+                    4,
+                ),
             ),
-            params: [
-                Literal(
-                    Int(
-                        false,
-                        4,
-                    ),
+            Literal(
+                Int(
+                    false,
+                    1,
                 ),
-                Literal(
-                    Int(
-                        false,
-                        1,
-                    ),
-                ),
-            ],
-        },
+            ),
+        ),
     ),
 )
 
 (= 10 xy)
 Ok(
-    Call(
-        Call {
-            func: Right(
-                "=",
+    Infix(
+        Equality(
+            Literal(
+                Int(
+                    false,
+                    10,
+                ),
             ),
-            params: [
-                Literal(
-                    Int(
-                        false,
-                        10,
-                    ),
-                ),
-                Identifier(
-                    "xy",
-                ),
-            ],
-        },
+            Variable(
+                "xy",
+            ),
+        ),
     ),
 )
 
 (func 100 (+ 4 10))
 Ok(
-    Call(
-        Call {
-            func: Right(
-                "func",
+    FuncCall(
+        Variable(
+            "func",
+        ),
+        [
+            Literal(
+                Int(
+                    false,
+                    100,
+                ),
             ),
-            params: [
-                Literal(
-                    Int(
-                        false,
-                        100,
+            Infix(
+                Add(
+                    Literal(
+                        Int(
+                            false,
+                            4,
+                        ),
+                    ),
+                    Literal(
+                        Int(
+                            false,
+                            10,
+                        ),
                     ),
                 ),
-                Call(
-                    Call {
-                        func: Right(
-                            "+",
+            ),
+        ],
+    ),
+)
+
+(= (func 69 (+ 1 10)) (func 10 100))
+Ok(
+    Infix(
+        Equality(
+            FuncCall(
+                Variable(
+                    "func",
+                ),
+                [
+                    Literal(
+                        Int(
+                            false,
+                            69,
                         ),
-                        params: [
+                    ),
+                    Infix(
+                        Add(
                             Literal(
                                 Int(
                                     false,
-                                    4,
+                                    1,
                                 ),
                             ),
                             Literal(
@@ -81,152 +101,90 @@ Ok(
                                     10,
                                 ),
                             ),
-                        ],
-                    },
-                ),
-            ],
-        },
-    ),
-)
-
-(= (func 69 (+ 1 10)) (xyzfunc 100) (func 10 100))
-Ok(
-    Call(
-        Call {
-            func: Right(
-                "=",
-            ),
-            params: [
-                Call(
-                    Call {
-                        func: Right(
-                            "func",
                         ),
-                        params: [
-                            Literal(
-                                Int(
-                                    false,
-                                    69,
-                                ),
-                            ),
-                            Call(
-                                Call {
-                                    func: Right(
-                                        "+",
-                                    ),
-                                    params: [
-                                        Literal(
-                                            Int(
-                                                false,
-                                                1,
-                                            ),
-                                        ),
-                                        Literal(
-                                            Int(
-                                                false,
-                                                10,
-                                            ),
-                                        ),
-                                    ],
-                                },
-                            ),
-                        ],
-                    },
-                ),
-                Call(
-                    Call {
-                        func: Right(
-                            "xyzfunc",
-                        ),
-                        params: [
-                            Literal(
-                                Int(
-                                    false,
-                                    100,
-                                ),
-                            ),
-                        ],
-                    },
-                ),
-                Call(
-                    Call {
-                        func: Right(
-                            "func",
-                        ),
-                        params: [
-                            Literal(
-                                Int(
-                                    false,
-                                    10,
-                                ),
-                            ),
-                            Literal(
-                                Int(
-                                    false,
-                                    100,
-                                ),
-                            ),
-                        ],
-                    },
-                ),
-            ],
-        },
-    ),
-)
-
-((lambda (x y z) (= x y z)) 10 20 10)
-Ok(
-    Call(
-        Call {
-            func: Left(
-                Lambda {
-                    args: Args(
-                        [
-                            "x",
-                            "y",
-                            "z",
-                        ],
                     ),
-                    body: Call(
-                        Call {
-                            func: Right(
-                                "=",
-                            ),
-                            params: [
-                                Identifier(
+                ],
+            ),
+            FuncCall(
+                Variable(
+                    "func",
+                ),
+                [
+                    Literal(
+                        Int(
+                            false,
+                            10,
+                        ),
+                    ),
+                    Literal(
+                        Int(
+                            false,
+                            100,
+                        ),
+                    ),
+                ],
+            ),
+        ),
+    ),
+)
+
+((lambda (x y z) (and (= x y) (= x z))) 10 20 10)
+Ok(
+    FuncCall(
+        Lambda(
+            Lambda {
+                args: Args(
+                    [
+                        "x",
+                        "y",
+                        "z",
+                    ],
+                ),
+                body: Infix(
+                    And(
+                        Infix(
+                            Equality(
+                                Variable(
                                     "x",
                                 ),
-                                Identifier(
+                                Variable(
                                     "y",
                                 ),
-                                Identifier(
+                            ),
+                        ),
+                        Infix(
+                            Equality(
+                                Variable(
+                                    "x",
+                                ),
+                                Variable(
                                     "z",
                                 ),
-                            ],
-                        },
+                            ),
+                        ),
                     ),
-                },
+                ),
+            },
+        ),
+        [
+            Literal(
+                Int(
+                    false,
+                    10,
+                ),
             ),
-            params: [
-                Literal(
-                    Int(
-                        false,
-                        10,
-                    ),
+            Literal(
+                Int(
+                    false,
+                    20,
                 ),
-                Literal(
-                    Int(
-                        false,
-                        20,
-                    ),
+            ),
+            Literal(
+                Int(
+                    false,
+                    10,
                 ),
-                Literal(
-                    Int(
-                        false,
-                        10,
-                    ),
-                ),
-            ],
-        },
+            ),
+        ],
     ),
 )

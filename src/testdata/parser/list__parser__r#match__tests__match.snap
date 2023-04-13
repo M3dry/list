@@ -86,30 +86,25 @@ Ok(
                             ),
                         ),
                         [
-                            Identifier(
+                            Variable(
                                 "var",
                             ),
                         ],
                     ),
                 ),
                 check: Some(
-                    Call(
-                        Call {
-                            func: Right(
-                                "=",
+                    Infix(
+                        Equality(
+                            Variable(
+                                "var",
                             ),
-                            params: [
-                                Identifier(
-                                    "var",
+                            Literal(
+                                Int(
+                                    false,
+                                    10,
                                 ),
-                                Literal(
-                                    Int(
-                                        false,
-                                        10,
-                                    ),
-                                ),
-                            ],
-                        },
+                            ),
+                        ),
                     ),
                 ),
                 ret: Literal(
@@ -129,7 +124,7 @@ Ok(
                             ),
                         ),
                         [
-                            Identifier(
+                            Variable(
                                 "_",
                             ),
                         ],
@@ -221,7 +216,7 @@ Ok(
                         [
                             (
                                 "x",
-                                Identifier(
+                                Variable(
                                     "var",
                                 ),
                             ),
@@ -237,7 +232,7 @@ Ok(
                     ),
                 ),
                 check: None,
-                ret: Identifier(
+                ret: Variable(
                     "var",
                 ),
             },

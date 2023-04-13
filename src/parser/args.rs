@@ -1,10 +1,10 @@
 use crate::tokenizer::{Keywords, Token};
 
-use super::{error, r#type::Type, Parser, ParserError, ParserErrorStack};
+use super::{r#type::{Generic, Type}, error, Parser, ParserError, ParserErrorStack};
 
 #[derive(Debug)]
 pub(crate) enum Arg {
-    Generic(String),
+    Generic(Generic),
     Named(String, Type),
     Simple(String),
 }
@@ -16,7 +16,10 @@ impl TryFrom<&mut Parser> for Arg {
         let next = value.pop_front_err("Arg")?;
         let name = match next {
             Token::Identifier(iden) => iden,
-            Token::Generic(generic) => return Ok(Arg::Generic(generic)),
+            w @ Token::Char(':') => {
+                value.tokens.push_front(w);
+                return Ok(Arg::Generic(error!(Generic::try_from(&mut *value), "Arg")?));
+            }
             _ => {
                 return Err(error!(
                     "Arg name",
@@ -39,7 +42,7 @@ impl TryFrom<&mut Parser> for Arg {
 
 #[derive(Debug)]
 pub struct ArgsTyped {
-    generics: Vec<String>,
+    generics: Vec<Generic>,
     args: Vec<(String, Type)>,
 }
 
@@ -58,12 +61,8 @@ impl TryFrom<&mut Parser> for ArgsTyped {
             ));
         }
 
-        while let Some(Token::Generic(_)) = value.first() {
-            if let Some(Token::Generic(generic)) = value.pop_front() {
-                generics.push(generic);
-            } else {
-                panic!("wtf")
-            }
+        while let Some(Token::Char(':')) = value.first() {
+            generics.push(error!(Generic::try_from(&mut *value), "ArgsTyped")?);
         }
 
         loop {
@@ -96,7 +95,7 @@ impl ToString for ArgsTyped {
                 format!(
                     "<{}>",
                     &self.generics.iter().fold(String::new(), |str, generic| {
-                        format!("{str}, {generic}")
+                        format!("{str}, {}", generic.to_string())
                     })[2..]
                 )
             } else {
@@ -132,15 +131,11 @@ impl TryFrom<&mut Parser> for Args {
                 value.pop_front();
                 break;
             }
+
             let arg = error!(Arg::try_from(&mut *value), "Args")?;
             match arg {
                 Arg::Simple(name) => args.push(name),
-                _ => {
-                    return Err(error!(
-                        "Args arg",
-                        format!("Expected just simple and generic args"),
-                    ))
-                }
+                _ => return Err(error!("Args arg", format!("Expected just simple args"),)),
             }
         }
 

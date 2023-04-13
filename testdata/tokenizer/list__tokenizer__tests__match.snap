@@ -101,8 +101,8 @@ Ok(
                 If,
             ),
             ParenOpen,
-            Identifier(
-                "=",
+            Char(
+                '=',
             ),
             Identifier(
                 "var",

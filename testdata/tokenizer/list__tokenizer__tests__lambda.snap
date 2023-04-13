@@ -19,8 +19,8 @@ Ok(
             ),
             ParenClose,
             ParenOpen,
-            Identifier(
-                "+",
+            Char(
+                '+',
             ),
             Identifier(
                 "x",
@@ -34,7 +34,7 @@ Ok(
     ),
 )
 
-(lambda (x y z) (= x y (= x z)))
+(lambda (x y z) (and (= x y) (= x z)))
 Ok(
     Tokens(
         [
@@ -54,8 +54,12 @@ Ok(
             ),
             ParenClose,
             ParenOpen,
-            Identifier(
-                "=",
+            Keyword(
+                And,
+            ),
+            ParenOpen,
+            Char(
+                '=',
             ),
             Identifier(
                 "x",
@@ -63,9 +67,10 @@ Ok(
             Identifier(
                 "y",
             ),
+            ParenClose,
             ParenOpen,
-            Identifier(
-                "=",
+            Char(
+                '=',
             ),
             Identifier(
                 "x",

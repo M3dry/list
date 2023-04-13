@@ -115,7 +115,7 @@ impl Parser {
         }
     }
 
-    fn first(&mut self) -> Option<&Token> {
+    fn first(&self) -> Option<&Token> {
         if self.tokens.len() > 0 {
             Some(self.tokens.index(0))
         } else {

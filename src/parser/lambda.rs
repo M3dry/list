@@ -45,7 +45,7 @@ impl TryFrom<&mut Parser> for Lambda {
 
 impl ToString for Lambda {
     fn to_string(&self) -> String {
-        format!("{} {{{}}}", self.args.to_string(), self.body.to_string())
+        format!("{} {}", self.args.to_string(), self.body.to_string())
     }
 }
 

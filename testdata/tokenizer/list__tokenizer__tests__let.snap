@@ -15,8 +15,8 @@ Ok(
                 "x",
             ),
             ParenOpen,
-            Identifier(
-                "+",
+            Char(
+                '+',
             ),
             Literal(
                 Int(
@@ -54,8 +54,8 @@ Ok(
                 "x",
             ),
             ParenOpen,
-            Identifier(
-                "+",
+            Char(
+                '+',
             ),
             Literal(
                 Int(
@@ -76,8 +76,8 @@ Ok(
                 "y",
             ),
             ParenOpen,
-            Identifier(
-                "=",
+            Char(
+                '=',
             ),
             Literal(
                 Int(

@@ -1,6 +1,6 @@
 ---
 source: src/parser/struct.rs
-expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{:#?}\", Struct::try_from\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{}\",\n                                |parser| format!(\"{:#?}\", Struct::try_from (parser))\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
 ---
 (struct Hello { x->i32 y->string })
 Ok(
@@ -31,21 +31,29 @@ Ok(
     Struct {
         name: "Hello",
         generics: [
-            "t",
-            "x",
+            Use(
+                "t",
+            ),
+            Use(
+                "x",
+            ),
         ],
         fields: StructFields(
             [
                 StructField {
                     name: "x",
                     type: Generic(
-                        "t",
+                        Use(
+                            "t",
+                        ),
                     ),
                 },
                 StructField {
                     name: "y",
                     type: Generic(
-                        "x",
+                        Use(
+                            "x",
+                        ),
                     ),
                 },
             ],
@@ -58,7 +66,9 @@ Ok(
     Struct {
         name: "Hello",
         generics: [
-            "t",
+            Use(
+                "t",
+            ),
         ],
         fields: StructFields(
             [],

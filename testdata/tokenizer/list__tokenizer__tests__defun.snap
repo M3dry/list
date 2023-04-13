@@ -81,8 +81,8 @@ Ok(
                 I64,
             ),
             ParenOpen,
-            Identifier(
-                "+",
+            Char(
+                '+',
             ),
             Identifier(
                 "x",
@@ -111,7 +111,10 @@ Ok(
                 "func",
             ),
             ParenOpen,
-            Generic(
+            Char(
+                ':',
+            ),
+            Identifier(
                 "t",
             ),
             Identifier(
@@ -120,7 +123,10 @@ Ok(
             Keyword(
                 Arrow,
             ),
-            Generic(
+            Char(
+                ':',
+            ),
+            Identifier(
                 "t",
             ),
             Identifier(
@@ -129,14 +135,20 @@ Ok(
             Keyword(
                 Arrow,
             ),
-            Generic(
+            Char(
+                ':',
+            ),
+            Identifier(
                 "t",
             ),
             ParenClose,
             Keyword(
                 Arrow,
             ),
-            Generic(
+            Char(
+                ':',
+            ),
+            Identifier(
                 "t",
             ),
             Identifier(

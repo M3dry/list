@@ -49,10 +49,16 @@ Ok(
             Identifier(
                 "Hello",
             ),
-            Generic(
+            Char(
+                ':',
+            ),
+            Identifier(
                 "t",
             ),
-            Generic(
+            Char(
+                ':',
+            ),
+            Identifier(
                 "x",
             ),
             CurlyOpen,
@@ -62,7 +68,10 @@ Ok(
             Keyword(
                 Arrow,
             ),
-            Generic(
+            Char(
+                ':',
+            ),
+            Identifier(
                 "t",
             ),
             Identifier(
@@ -71,7 +80,10 @@ Ok(
             Keyword(
                 Arrow,
             ),
-            Generic(
+            Char(
+                ':',
+            ),
+            Identifier(
                 "x",
             ),
             CurlyClose,
@@ -91,7 +103,10 @@ Ok(
             Identifier(
                 "Hello",
             ),
-            Generic(
+            Char(
+                ':',
+            ),
+            Identifier(
                 "t",
             ),
             CurlyOpen,

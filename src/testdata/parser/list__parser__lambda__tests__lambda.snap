@@ -1,6 +1,6 @@
 ---
 source: src/parser/lambda.rs
-expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{:#?}\", Lambda::try_from\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{}\",\n                                |parser| format!(\"{:#?}\", Lambda::try_from (parser))\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
 ---
 (lambda (x y) (+ x y))
 Ok(
@@ -11,25 +11,20 @@ Ok(
                 "y",
             ],
         ),
-        body: Call(
-            Call {
-                func: Right(
-                    "+",
+        body: Infix(
+            Add(
+                Variable(
+                    "x",
                 ),
-                params: [
-                    Identifier(
-                        "x",
-                    ),
-                    Identifier(
-                        "y",
-                    ),
-                ],
-            },
+                Variable(
+                    "y",
+                ),
+            ),
         ),
     },
 )
 
-(lambda (x y z) (= x y (= x z)))
+(lambda (x y z) (and (= x y) (= x z)))
 Ok(
     Lambda {
         args: Args(
@@ -39,35 +34,29 @@ Ok(
                 "z",
             ],
         ),
-        body: Call(
-            Call {
-                func: Right(
-                    "=",
+        body: Infix(
+            And(
+                Infix(
+                    Equality(
+                        Variable(
+                            "x",
+                        ),
+                        Variable(
+                            "y",
+                        ),
+                    ),
                 ),
-                params: [
-                    Identifier(
-                        "x",
+                Infix(
+                    Equality(
+                        Variable(
+                            "x",
+                        ),
+                        Variable(
+                            "z",
+                        ),
                     ),
-                    Identifier(
-                        "y",
-                    ),
-                    Call(
-                        Call {
-                            func: Right(
-                                "=",
-                            ),
-                            params: [
-                                Identifier(
-                                    "x",
-                                ),
-                                Identifier(
-                                    "z",
-                                ),
-                            ],
-                        },
-                    ),
-                ],
-            },
+                ),
+            ),
         ),
     },
 )

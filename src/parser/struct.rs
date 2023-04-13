@@ -1,11 +1,11 @@
 use crate::tokenizer::{Keywords, Token};
 
-use super::{error, r#type::Type, Parser, ParserError, ParserErrorStack};
+use super::{error, r#type::{Type, Generic}, Parser, ParserError, ParserErrorStack};
 
 #[derive(Debug)]
 pub struct Struct {
     name: String,
-    generics: Vec<String>,
+    generics: Vec<Generic>,
     fields: StructFields,
 }
 
@@ -46,14 +46,8 @@ impl TryFrom<&mut Parser> for Struct {
                 .first()
                 .ok_or(error!("Struct", format!("Expected more tokens")))?;
 
-            if let Token::Generic(_) = peek {
-                generics.push(
-                    if let Token::Generic(generic) = value.pop_front().unwrap() {
-                        generic
-                    } else {
-                        panic!("wtf")
-                    },
-                )
+            if let Token::Char(':') = peek {
+                generics.push(error!(Generic::try_from(&mut *value), "Struct")?)
             } else {
                 break;
             }
@@ -86,7 +80,7 @@ impl ToString for Struct {
                 format!(
                     "<{}>",
                     &self.generics.iter().fold(String::new(), |str, generic| {
-                        format!("{str}, {generic}")
+                        format!("{str}, {}", generic.to_string())
                     })[2..]
                 )
             } else {

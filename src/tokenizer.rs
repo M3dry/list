@@ -24,7 +24,6 @@ pub(crate) enum Token {
     CurlyOpen,
     CurlyClose,
     Identifier(String),
-    Generic(String),
 }
 
 impl From<Vec<Token>> for Tokens {
@@ -66,6 +65,12 @@ pub(crate) enum Keywords {
     Use,
     Arrow,
     Mut,
+    Not,
+    And,
+    Or,
+    Xor,
+    BitwiseAnd,
+    BitwiseOr,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -155,7 +160,6 @@ impl FromStr for Tokens {
                 '&' => tokens.push(Token::Ref),
                 char if char.is_ascii_alphanumeric() || char == '-' || char == '_' =>
                 {
-                    println!("{char}");
                     let mut chs = vec![];
 
                     if char == '-' {
@@ -223,6 +227,12 @@ fn token_from_str(str: &str) -> Vec<Token> {
         "enum" => vec![Token::Keyword(Keywords::Enum)],
         "use" => vec![Token::Keyword(Keywords::Use)],
         "mut" => vec![Token::Keyword(Keywords::Mut)],
+        "not" => vec![Token::Keyword(Keywords::Not)],
+        "and" => vec![Token::Keyword(Keywords::And)],
+        "or" => vec![Token::Keyword(Keywords::Or)],
+        "xor" => vec![Token::Keyword(Keywords::Xor)],
+        "band" => vec![Token::Keyword(Keywords::BitwiseAnd)],
+        "bor" => vec![Token::Keyword(Keywords::BitwiseOr)],
         "true" => vec![Token::Literal(Literals::Bool(true))],
         "false" => vec![Token::Literal(Literals::Bool(false))],
         "u8" => vec![Token::Type(BuiltinTypes::U8)],
@@ -251,9 +261,6 @@ fn token_from_str(str: &str) -> Vec<Token> {
         }
         num if num.parse::<u128>().is_ok() => {
             vec![Token::Literal(Literals::Int(false, num.parse().unwrap()))]
-        }
-        generic if generic.len() > 1 && &generic[..1] == ":" => {
-            vec![Token::Generic(generic[1..].to_string())]
         }
         identifier
             if identifier.len() > 0

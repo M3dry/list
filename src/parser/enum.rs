@@ -1,10 +1,10 @@
 use crate::tokenizer::{Keywords, Token};
 
-use super::{error, r#struct::StructFields, r#type::Type, Parser, ParserError, ParserErrorStack};
+use super::{error, r#struct::StructFields, r#type::{Type, Generic}, Parser, ParserError, ParserErrorStack};
 #[derive(Debug)]
 pub struct Enum {
     name: String,
-    generics: Vec<String>,
+    generics: Vec<Generic>,
     variants: Vec<Variant>,
 }
 
@@ -42,13 +42,9 @@ impl TryFrom<&mut Parser> for Enum {
                 .first()
                 .ok_or(error!("Enum", format!("Expected more tokens")))?;
 
-            if let Token::Generic(_) = peek {
+            if let Token::Char(':') = peek {
                 generics.push(
-                    if let Token::Generic(generic) = value.pop_front().unwrap() {
-                        generic
-                    } else {
-                        panic!("wtf")
-                    },
+                    error!(Generic::try_from(&mut *value), "Enum")?
                 )
             } else {
                 break;
@@ -86,7 +82,7 @@ impl ToString for Enum {
                 format!(
                     "<{}>",
                     &self.generics.iter().fold(String::new(), |str, generic| {
-                        format!("{str}, {generic}")
+                        format!("{str}, {}", generic.to_string())
                     })[2..]
                 )
             } else {

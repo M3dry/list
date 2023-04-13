@@ -54,20 +54,15 @@ Ok(
         return_type: Builtin(
             I64,
         ),
-        body: Call(
-            Call {
-                func: Right(
-                    "+",
+        body: Infix(
+            Add(
+                Variable(
+                    "x",
                 ),
-                params: [
-                    Identifier(
-                        "x",
-                    ),
-                    Identifier(
-                        "y",
-                    ),
-                ],
-            },
+                Variable(
+                    "y",
+                ),
+            ),
         ),
     },
 )
@@ -79,27 +74,35 @@ Ok(
         name: "func",
         args: ArgsTyped {
             generics: [
-                "t",
+                Use(
+                    "t",
+                ),
             ],
             args: [
                 (
                     "x",
                     Generic(
-                        "t",
+                        Use(
+                            "t",
+                        ),
                     ),
                 ),
                 (
                     "y",
                     Generic(
-                        "t",
+                        Use(
+                            "t",
+                        ),
                     ),
                 ),
             ],
         },
         return_type: Generic(
-            "t",
+            Use(
+                "t",
+            ),
         ),
-        body: Identifier(
+        body: Variable(
             "x",
         ),
     },
@@ -127,13 +130,11 @@ Ok(
                 ),
             ],
         ),
-        body: Call(
-            Call {
-                func: Right(
-                    "func",
-                ),
-                params: [],
-            },
+        body: FuncCall(
+            Variable(
+                "func",
+            ),
+            [],
         ),
     },
 )

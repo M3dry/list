@@ -1,6 +1,6 @@
 ---
 source: src/parser/if.rs
-expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{:#?}\", If::try_from\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{}\",\n                                |parser| format!(\"{:#?}\", If::try_from (parser))\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
 ---
 (if true 10 4)
 Ok(
@@ -28,26 +28,21 @@ Ok(
 (if (= 10 5) 10 (func 4 10))
 Ok(
     If {
-        condition: Call(
-            Call {
-                func: Right(
-                    "=",
+        condition: Infix(
+            Equality(
+                Literal(
+                    Int(
+                        false,
+                        10,
+                    ),
                 ),
-                params: [
-                    Literal(
-                        Int(
-                            false,
-                            10,
-                        ),
+                Literal(
+                    Int(
+                        false,
+                        5,
                     ),
-                    Literal(
-                        Int(
-                            false,
-                            5,
-                        ),
-                    ),
-                ],
-            },
+                ),
+            ),
         ),
         true_branch: Literal(
             Int(
@@ -55,26 +50,24 @@ Ok(
                 10,
             ),
         ),
-        false_branch: Call(
-            Call {
-                func: Right(
-                    "func",
+        false_branch: FuncCall(
+            Variable(
+                "func",
+            ),
+            [
+                Literal(
+                    Int(
+                        false,
+                        4,
+                    ),
                 ),
-                params: [
-                    Literal(
-                        Int(
-                            false,
-                            4,
-                        ),
+                Literal(
+                    Int(
+                        false,
+                        10,
                     ),
-                    Literal(
-                        Int(
-                            false,
-                            10,
-                        ),
-                    ),
-                ],
-            },
+                ),
+            ],
         ),
     },
 )
@@ -82,18 +75,40 @@ Ok(
 (if (= (func 1 10) (xyzfunc 100 (+ 1 10))) 100 (xyzfunc 100 200))
 Ok(
     If {
-        condition: Call(
-            Call {
-                func: Right(
-                    "=",
-                ),
-                params: [
-                    Call(
-                        Call {
-                            func: Right(
-                                "func",
+        condition: Infix(
+            Equality(
+                FuncCall(
+                    Variable(
+                        "func",
+                    ),
+                    [
+                        Literal(
+                            Int(
+                                false,
+                                1,
                             ),
-                            params: [
+                        ),
+                        Literal(
+                            Int(
+                                false,
+                                10,
+                            ),
+                        ),
+                    ],
+                ),
+                FuncCall(
+                    Variable(
+                        "xyzfunc",
+                    ),
+                    [
+                        Literal(
+                            Int(
+                                false,
+                                100,
+                            ),
+                        ),
+                        Infix(
+                            Add(
                                 Literal(
                                     Int(
                                         false,
@@ -106,47 +121,11 @@ Ok(
                                         10,
                                     ),
                                 ),
-                            ],
-                        },
-                    ),
-                    Call(
-                        Call {
-                            func: Right(
-                                "xyzfunc",
                             ),
-                            params: [
-                                Literal(
-                                    Int(
-                                        false,
-                                        100,
-                                    ),
-                                ),
-                                Call(
-                                    Call {
-                                        func: Right(
-                                            "+",
-                                        ),
-                                        params: [
-                                            Literal(
-                                                Int(
-                                                    false,
-                                                    1,
-                                                ),
-                                            ),
-                                            Literal(
-                                                Int(
-                                                    false,
-                                                    10,
-                                                ),
-                                            ),
-                                        ],
-                                    },
-                                ),
-                            ],
-                        },
-                    ),
-                ],
-            },
+                        ),
+                    ],
+                ),
+            ),
         ),
         true_branch: Literal(
             Int(
@@ -154,26 +133,24 @@ Ok(
                 100,
             ),
         ),
-        false_branch: Call(
-            Call {
-                func: Right(
-                    "xyzfunc",
+        false_branch: FuncCall(
+            Variable(
+                "xyzfunc",
+            ),
+            [
+                Literal(
+                    Int(
+                        false,
+                        100,
+                    ),
                 ),
-                params: [
-                    Literal(
-                        Int(
-                            false,
-                            100,
-                        ),
+                Literal(
+                    Int(
+                        false,
+                        200,
                     ),
-                    Literal(
-                        Int(
-                            false,
-                            200,
-                        ),
-                    ),
-                ],
-            },
+                ),
+            ],
         ),
     },
 )

@@ -7,8 +7,8 @@ Ok(
     Tokens(
         [
             ParenOpen,
-            Identifier(
-                "+",
+            Char(
+                '+',
             ),
             Literal(
                 Int(
@@ -32,8 +32,8 @@ Ok(
     Tokens(
         [
             ParenOpen,
-            Identifier(
-                "=",
+            Char(
+                '=',
             ),
             Literal(
                 Int(
@@ -64,8 +64,8 @@ Ok(
                 ),
             ),
             ParenOpen,
-            Identifier(
-                "+",
+            Char(
+                '+',
             ),
             Literal(
                 Int(
@@ -85,13 +85,13 @@ Ok(
     ),
 )
 
-(= (func 69 (+ 1 10)) (xyzfunc 100) (func 10 100))
+(= (func 69 (+ 1 10)) (func 10 100))
 Ok(
     Tokens(
         [
             ParenOpen,
-            Identifier(
-                "=",
+            Char(
+                '=',
             ),
             ParenOpen,
             Identifier(
@@ -104,8 +104,8 @@ Ok(
                 ),
             ),
             ParenOpen,
-            Identifier(
-                "+",
+            Char(
+                '+',
             ),
             Literal(
                 Int(
@@ -120,17 +120,6 @@ Ok(
                 ),
             ),
             ParenClose,
-            ParenClose,
-            ParenOpen,
-            Identifier(
-                "xyzfunc",
-            ),
-            Literal(
-                Int(
-                    false,
-                    100,
-                ),
-            ),
             ParenClose,
             ParenOpen,
             Identifier(
@@ -154,7 +143,7 @@ Ok(
     ),
 )
 
-((lambda (x y z) (= x y z)) 10 20 10)
+((lambda (x y z) (and (= x y) (= x z))) 10 20 10)
 Ok(
     Tokens(
         [
@@ -175,8 +164,12 @@ Ok(
             ),
             ParenClose,
             ParenOpen,
-            Identifier(
-                "=",
+            Keyword(
+                And,
+            ),
+            ParenOpen,
+            Char(
+                '=',
             ),
             Identifier(
                 "x",
@@ -184,9 +177,18 @@ Ok(
             Identifier(
                 "y",
             ),
+            ParenClose,
+            ParenOpen,
+            Char(
+                '=',
+            ),
+            Identifier(
+                "x",
+            ),
             Identifier(
                 "z",
             ),
+            ParenClose,
             ParenClose,
             ParenClose,
             Literal(

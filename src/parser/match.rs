@@ -55,10 +55,10 @@ impl TryFrom<&mut Parser> for Match {
 impl ToString for Match {
     fn to_string(&self) -> String {
         format!(
-            "match {{{}}} {{{}}}",
+            "match {} {{{}}}",
             self.against.to_string(),
             self.branches.iter().fold(String::new(), |str, branch| {
-                format!("{str}\n{}", branch.to_string())
+                format!("{str}\n{},", branch.to_string())
             })
         )
     }
@@ -117,7 +117,7 @@ impl TryFrom<&mut Parser> for Branch {
 impl ToString for Branch {
     fn to_string(&self) -> String {
         format!(
-            "{}{} => {{{}}}",
+            "{}{} => {}",
             self.pattern.to_string(),
             if let Some(check) = &self.check {
                 format!(" if {}", check.to_string())
