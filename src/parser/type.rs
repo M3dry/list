@@ -1,4 +1,4 @@
-use crate::tokenizer::{BuiltinTypes, Keywords, Literals, Token, Int};
+use crate::tokenizer::{BuiltinTypes, Int, Keywords, Literals, Token};
 
 use super::{error, Parser, ParserError, ParserErrorStack};
 
@@ -49,8 +49,11 @@ impl TryFrom<&mut Parser> for Type {
             Token::Type(builtin) => Ok(Type::Builtin(builtin)),
             Token::Char(':') => {
                 value.tokens.push_front(Token::Char(':'));
-                Ok(Type::Generic(error!(Generic::try_from(&mut *value), "Type")?))
-            },
+                Ok(Type::Generic(error!(
+                    Generic::try_from(&mut *value),
+                    "Type"
+                )?))
+            }
             Token::Identifier(iden) => Ok(Type::Custom(iden)),
             Token::BracketOpen => {
                 let r#type = Box::new(error!(Type::try_from(&mut *value), "Type")?);
@@ -187,13 +190,18 @@ impl TryFrom<&mut Parser> for Lifetimes {
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
         let next = value.pop_front_err("Lifetimes")?;
         if next != Token::Slash {
-            return Err(error!("Lifetimes", format!("Expected slash, got {next:#?}")))
+            return Err(error!(
+                "Lifetimes",
+                format!("Expected slash, got {next:#?}")
+            ));
         }
 
         let mut lifetimes = vec![];
 
         loop {
-            let peek = value.first().ok_or(error!("Lifetimes", format!("Expected more tokens")))?;
+            let peek = value
+                .first()
+                .ok_or(error!("Lifetimes", format!("Expected more tokens")))?;
 
             if peek == &Token::Slash {
                 value.pop_front();
@@ -202,7 +210,12 @@ impl TryFrom<&mut Parser> for Lifetimes {
 
             match value.pop_front_err("Lifetimes")? {
                 Token::Identifier(iden) => lifetimes.push(iden),
-                token => return Err(error!("Lifetimes", format!("Expected identifier, got {token:#?}"))),
+                token => {
+                    return Err(error!(
+                        "Lifetimes",
+                        format!("Expected identifier, got {token:#?}")
+                    ))
+                }
             }
         }
 
@@ -232,29 +245,27 @@ impl TryFrom<&mut Parser> for NamespacedType {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        Ok(
-            match value.pop_front_err("NamespacedType")? {
-                Token::Identifier(iden)
-                    if value.first() == Some(&Token::Keyword(Keywords::LeftArrow)) =>
-                {
-                    value.pop_front();
-                    NamespacedType::Space(
-                        iden,
-                        Box::new(error!(
-                            NamespacedType::try_from(&mut *value),
-                            "NamescapedType"
-                        )?),
-                    )
-                }
-                Token::Identifier(iden) => NamespacedType::Final(iden),
-                token => {
-                    return Err(error!(
-                        "NamespacedType",
-                        format!("Expected identifier, got {token:#?}")
-                    ))
-                }
-            },
-        )
+        Ok(match value.pop_front_err("NamespacedType")? {
+            Token::Identifier(iden)
+                if value.first() == Some(&Token::Keyword(Keywords::LeftArrow)) =>
+            {
+                value.pop_front();
+                NamespacedType::Space(
+                    iden,
+                    Box::new(error!(
+                        NamespacedType::try_from(&mut *value),
+                        "NamescapedType"
+                    )?),
+                )
+            }
+            Token::Identifier(iden) => NamespacedType::Final(iden),
+            token => {
+                return Err(error!(
+                    "NamespacedType",
+                    format!("Expected identifier, got {token:#?}")
+                ))
+            }
+        })
     }
 }
 
@@ -272,7 +283,7 @@ pub enum Generic {
     Constrained {
         name: String,
         constraints: Constraints,
-    }, // TODO: constraints
+    },
     Use(String),
 }
 
@@ -341,7 +352,6 @@ impl TryFrom<&mut Parser> for Constraints {
             let next = value.pop_front_err("Constraints")?;
             match next {
                 Token::Slash => {
-                    value.pop_front();
                     return Ok(Self(constraints));
                 }
                 Token::Identifier(iden) => constraints.push(iden),
@@ -358,6 +368,15 @@ impl TryFrom<&mut Parser> for Constraints {
 
 impl ToString for Constraints {
     fn to_string(&self) -> String {
-        todo!()
+        format!(
+            "{}",
+            &if self.0.is_empty() {
+                format!(" + ")
+            } else {
+                self.0.iter().fold(String::new(), |str, constraint| {
+                    format!("{str} + {}", constraint.to_string())
+                })
+            }[3..]
+        )
     }
 }

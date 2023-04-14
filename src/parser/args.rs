@@ -1,6 +1,10 @@
 use crate::tokenizer::{Keywords, Token};
 
-use super::{r#type::{Generic, Type}, error, Parser, ParserError, ParserErrorStack};
+use super::{
+    error,
+    r#type::{Generic, Type},
+    Parser, ParserError, ParserErrorStack,
+};
 
 #[derive(Debug)]
 pub(crate) enum Arg {
@@ -42,6 +46,7 @@ impl TryFrom<&mut Parser> for Arg {
 
 #[derive(Debug)]
 pub struct ArgsTyped {
+    lifetimes: Vec<String>,
     generics: Vec<Generic>,
     args: Vec<(String, Type)>,
 }
@@ -52,6 +57,7 @@ impl TryFrom<&mut Parser> for ArgsTyped {
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
         let mut args = vec![];
         let mut generics = vec![];
+        let mut lifetimes = vec![];
 
         let next = value.pop_front_err("ArgsTyped")?;
         if next != Token::ParenOpen {
@@ -61,8 +67,29 @@ impl TryFrom<&mut Parser> for ArgsTyped {
             ));
         }
 
-        while let Some(Token::Char(':')) = value.first() {
-            generics.push(error!(Generic::try_from(&mut *value), "ArgsTyped")?);
+        loop {
+            let peek = value
+                .first()
+                .ok_or(error!("ArgsTyped", format!("Expected more tokens")))?;
+
+            match peek {
+                Token::Char(':') => {
+                    generics.push(error!(Generic::try_from(&mut *value), "ArgsTyped")?)
+                }
+                Token::BackTick => {
+                    value.pop_front();
+                    match value.pop_front_err("ArgsTyped")? {
+                        Token::Identifier(iden) => lifetimes.push(iden),
+                        token => {
+                            return Err(error!(
+                                "ArgsTyped",
+                                format!("Expected identifier, got {token:#?}")
+                            ))
+                        }
+                    }
+                }
+                _ => break,
+            }
         }
 
         loop {
@@ -83,7 +110,11 @@ impl TryFrom<&mut Parser> for ArgsTyped {
             }
         }
 
-        Ok(ArgsTyped { generics, args })
+        Ok(ArgsTyped {
+            lifetimes,
+            generics,
+            args,
+        })
     }
 }
 

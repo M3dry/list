@@ -8,7 +8,7 @@ pub struct Tokens(pub(crate) Vec<Token>);
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Token {
-    ToLiteral,
+    BackTick,
     Literal(Literals),
     Keyword(Keywords),
     Type(BuiltinTypes),
@@ -257,7 +257,7 @@ impl FromStr for Tokens {
 
 fn token_from_str(str: &str) -> Vec<Token> {
     match str {
-        "`" => vec![Token::ToLiteral],
+        "`" => vec![Token::BackTick],
         "if" => vec![Token::Keyword(Keywords::If)],
         "match" => vec![Token::Keyword(Keywords::Match)],
         "defun" => vec![Token::Keyword(Keywords::Defun)],
