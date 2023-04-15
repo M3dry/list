@@ -12,6 +12,8 @@ pub enum Type {
     Complex(String, Vec<Type>),
     Array(Box<Type>, Option<usize>),
     Touple(Vec<Type>),
+    SelfA,
+    SelfT,
 }
 
 impl TryFrom<&mut Parser> for Type {
@@ -54,6 +56,8 @@ impl TryFrom<&mut Parser> for Type {
                     "Type"
                 )?))
             }
+            Token::Identifier(iden) if &iden == "self" => Ok(Self::SelfA),
+            Token::Identifier(iden) if &iden == "Self" => Ok(Self::SelfT),
             Token::Identifier(iden) => Ok(Type::Custom(iden)),
             Token::BracketOpen => {
                 let r#type = Box::new(error!(Type::try_from(&mut *value), "Type")?);
@@ -177,6 +181,8 @@ impl ToString for Type {
                     })
                 }[2..]
             ),
+            Self::SelfT => format!("Self"),
+            Self::SelfA => format!("self"),
         }
     }
 }

@@ -45,6 +45,11 @@ impl TryFrom<&mut Parser> for If {
 
         let false_branch = error!(Exp::try_from(&mut *value), "If")?;
 
+        let next = value.pop_front_err("If")?;
+        if next != Token::ParenClose {
+            return Err(error!("If", format!("Expected parenClose, got {next:#?}")))
+        }
+
         Ok(Self {
             condition,
             true_branch,

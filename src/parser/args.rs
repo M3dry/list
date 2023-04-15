@@ -11,6 +11,7 @@ pub(crate) enum Arg {
     Generic(Generic),
     Named(String, Type),
     Simple(String),
+    SelfA(Type),
 }
 
 impl TryFrom<&mut Parser> for Arg {
@@ -19,11 +20,23 @@ impl TryFrom<&mut Parser> for Arg {
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
         let next = value.pop_front_err("Arg")?;
         let name = match next {
-            Token::Identifier(iden) => iden,
+            Token::Identifier(iden) if &iden == "self" => return Ok(Arg::SelfA(Type::SelfA)),
+            w @ Token::Ref => {
+                value.tokens.push_front(w);
+                let ret = error!(Type::try_from(&mut *value), "Arg")?;
+
+                match &ret {
+                    Type::Ref(_, t) | Type::RefMut(_, t) if matches!(**t, Type::SelfA) => {
+                        return Ok(Self::SelfA(ret))
+                    }
+                    token => return Err(error!("Arg", format!("Expected self, got {token:#?}"))),
+                }
+            }
             w @ Token::Char(':') => {
                 value.tokens.push_front(w);
                 return Ok(Arg::Generic(error!(Generic::try_from(&mut *value), "Arg")?));
             }
+            Token::Identifier(iden) => iden,
             _ => {
                 return Err(error!(
                     "Arg name",
@@ -48,6 +61,7 @@ impl TryFrom<&mut Parser> for Arg {
 pub struct ArgsTyped {
     lifetimes: Vec<String>,
     generics: Vec<Generic>,
+    selft: Option<Type>,
     args: Vec<(String, Type)>,
 }
 
@@ -92,6 +106,8 @@ impl TryFrom<&mut Parser> for ArgsTyped {
             }
         }
 
+        let mut selft = None;
+
         loop {
             if value.first() == Some(&Token::ParenClose) {
                 value.pop_front();
@@ -106,12 +122,16 @@ impl TryFrom<&mut Parser> for ArgsTyped {
                         format!("Expected named arg, got a simple arg"),
                     ))
                 }
+                Arg::SelfA(selft2) => {
+                    selft = Some(selft2)
+                },
                 Arg::Named(name, arg_type) => args.push((name, arg_type)),
             }
         }
 
         Ok(ArgsTyped {
             lifetimes,
+            selft,
             generics,
             args,
         })
@@ -121,13 +141,26 @@ impl TryFrom<&mut Parser> for ArgsTyped {
 impl ToString for ArgsTyped {
     fn to_string(&self) -> String {
         format!(
-            "{}({})",
+            "{}({}{})",
             if !self.generics.is_empty() {
                 format!(
                     "<{}>",
                     &self.generics.iter().fold(String::new(), |str, generic| {
                         format!("{str}, {}", generic.to_string())
                     })[2..]
+                )
+            } else {
+                format!("")
+            },
+            if let Some(selft) = &self.selft {
+                format!(
+                    "{}{}",
+                    selft.to_string(),
+                    if self.args.is_empty() {
+                        format!("")
+                    } else {
+                        format!(", ")
+                    }
                 )
             } else {
                 format!("")

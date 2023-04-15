@@ -84,7 +84,6 @@ impl TryFrom<&mut Parser> for Branch {
         }
 
         let pattern = error!(Pattern::try_from(&mut *value), "Branch")?;
-        println!("{pattern:#?}");
 
         let ret = if value.first() == Some(&Token::Keyword(Keywords::If)) {
             value.pop_front();
@@ -167,7 +166,27 @@ impl TryFrom<&mut Parser> for Pattern {
             lit @ Token::Literal(Literals::Int(..)) if value.first() == Some(&Token::DoubleDot) => {
                 value.tokens.push_front(lit);
 
-                Self::Range(error!(Range::try_from(&mut *value), "Pattern")?)
+                Self::Range(match error!(Range::try_from(&mut *value), "Pattern")? {
+                    Range::Normal(start, end)
+                        if matches!(start, Exp::Literal(_)) && matches!(end, Exp::Literal(_)) =>
+                    {
+                        Range::Normal(start, end)
+                    }
+                    Range::Inclusive(start, end)
+                        if matches!(start, Exp::Literal(_)) && matches!(end, Exp::Literal(_)) =>
+                    {
+                        Range::Inclusive(start, end)
+                    }
+                    Range::Infinite(start) if matches!(start, Exp::Literal(_)) => {
+                        Range::Infinite(start)
+                    }
+                    range => {
+                        return Err(error!(
+                            "Pattern",
+                            format!("Expected range to consist of literals, got {range:#?}")
+                        ))
+                    }
+                })
             }
             Token::Literal(literal) => Self::Literal(literal),
             Token::BracketOpen => {
@@ -227,9 +246,7 @@ impl TryFrom<&mut Parser> for Pattern {
                             pats.push(error!(Self::try_from(&mut *value), "Pattern")?)
                         }
                     }
-                    iden @ Token::Identifier(_)
-                        if value.first() != Some(&Token::ParenClose) =>
-                    {
+                    iden @ Token::Identifier(_) if value.first() != Some(&Token::ParenClose) => {
                         value.tokens.push_front(iden);
                         let namespace = error!(NamespacedType::try_from(&mut *value), "Pattern")?;
 
@@ -255,13 +272,18 @@ impl TryFrom<&mut Parser> for Pattern {
                                             value.pop_front();
                                             let next = value.pop_front_err("Pattern")?;
                                             if next != Token::ParenClose {
-                                                return Err(error!("Pattern", format!("Expected parenClose, got {next:#?}")))
+                                                return Err(error!(
+                                                    "Pattern",
+                                                    format!("Expected parenClose, got {next:#?}")
+                                                ));
                                             }
 
                                             break Self::Struct(namespace, fields);
                                         }
 
-                                        if value.nth(1) == Some(&Token::Keyword(Keywords::LeftArrow)) {
+                                        if value.nth(1)
+                                            == Some(&Token::Keyword(Keywords::LeftArrow))
+                                        {
                                             let field = match value.pop_front_err("Patter")? {
                                                 Token::Identifier(iden) => iden,
                                                 token => {

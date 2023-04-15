@@ -1,60 +1,56 @@
 use crate::tokenizer::{Int, Literals, Token};
 
-use super::{error, Parser, ParserError, ParserErrorStack};
+use super::{error, exp::Exp, Parser, ParserError, ParserErrorStack};
 
 #[derive(Debug)]
 pub enum Range {
-    Normal(Int, Int),
-    Inclusive(Int, Int),
-    InfiniteUpper(Int),
+    Normal(Exp, Exp),
+    Inclusive(Exp, Exp),
+    Infinite(Exp),
 }
 
 impl TryFrom<&mut Parser> for Range {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
+        let paren = if value.first() == Some(&Token::ParenClose) {
+            value.pop_front();
+            true
+        } else {
+            false
+        };
+        let start = error!(Exp::try_from(&mut *value), "Range")?;
         let next = value.pop_front_err("Range")?;
-        match next {
-            Token::Literal(Literals::Int(start)) => {
-                let next = value.pop_front_err("Range")?;
-                if next != Token::DoubleDot {
-                    return Err(error!(
-                        "Range",
-                        format!("Expected doubleDot, got {next:#?}")
-                    ));
-                }
-
-                let next = value.first();
-                match next {
-                    Some(Token::Literal(Literals::Int(_))) => {
-                        if let Token::Literal(Literals::Int(end)) = value.pop_front().unwrap() {
-                            Ok(Self::Normal(start, end))
-                        } else {
-                            unreachable!()
-                        }
-                    }
-                    Some(Token::Char('=')) => {
-                        value.pop_front();
-                        let next = value.pop_front_err("Range")?;
-                        match next {
-                            Token::Literal(Literals::Int(end)) => Ok(Self::Inclusive(start, end)),
-                            token => Err(error!("Range", format!("Expected int, got {token:#?}"))),
-                        }
-                    }
-                    _ => Ok(Self::InfiniteUpper(start)),
-                }
-            }
-            token => Err(error!("Range", format!("Expected int, got {token:#?}"))),
+        if next != Token::DoubleDot {
+            return Err(error!(
+                "Range",
+                format!("Expected doubleDot, got {next:#?}")
+            ));
         }
+        let inclusive = match value.first() {
+            Some(&Token::Char('=')) => {
+                value.pop_front();
+                true
+            },
+            Some(&Token::ParenClose) if paren => return Ok(Self::Infinite(start)),
+            _ => false,
+        };
+        let end = error!(Exp::try_from(&mut *value), "Range")?;
+
+        Ok(if inclusive {
+            Self::Inclusive(start, end)
+        } else {
+            Self::Normal(start, end)
+        })
     }
 }
 
 impl ToString for Range {
     fn to_string(&self) -> String {
         match self {
-            Self::Normal(start, end) => format!("{}..{}", start.to_string(), end.to_string()),
-            Self::Inclusive(start, end) => format!("{}..={}", start.to_string(), end.to_string()),
-            Self::InfiniteUpper(start) => format!("{}..", start.to_string()),
+            Self::Normal(start, end) => format!("({}..{})", start.to_string(), end.to_string()),
+            Self::Inclusive(start, end) => format!("({}..={})", start.to_string(), end.to_string()),
+            Self::Infinite(start) => format!("({}..)", start.to_string()),
         }
     }
 }

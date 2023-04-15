@@ -58,6 +58,11 @@ impl TryFrom<&mut Parser> for Defun {
         let return_type = error!(Type::try_from(&mut *value), "Defun")?;
         let body = error!(Exp::try_from(&mut *value), "Defun")?;
 
+        let next = value.pop_front_err("Defun")?;
+        if next != Token::ParenClose {
+            return Err(error!("Defun", format!("Expected parenClose, got {next:#?}")))
+        }
+
         Ok(Defun {
             scope,
             name,

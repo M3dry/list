@@ -100,12 +100,15 @@ pub(crate) enum Keywords {
     Loop,
     While,
     Break,
+    Impl,
+    As,
     Continue,
     LeftArrow,
     RightArrow,
     Return,
     Do,
     Mut,
+    Deref,
     Not,
     And,
     Or,
@@ -184,14 +187,15 @@ impl FromStr for Tokens {
                     tokens.push(Token::Literal(Literals::Char(ch)));
                 }
                 '"' => {
-                    let mut literal = vec![chars.next().unwrap()];
+                    let mut literal = vec![];
                     let mut backslash = false;
 
                     while let Some(char) = chars.next() {
                         if char == '"' && !backslash {
                             break;
                         } else if char == '\\' && !backslash {
-                            backslash = true
+                            backslash = true;
+                            literal.push(char)
                         } else {
                             literal.push(char);
                             backslash = false
@@ -207,6 +211,11 @@ impl FromStr for Tokens {
                     chars.next();
                     tokens.push(Token::DoubleDot)
                 }
+                '-' if chars.peek() == Some(&'-') => {
+                    chars.next();
+                    while chars.next() != Some('\n') {
+                    }
+                }
                 '-' if matches!(chars.peek(), Some(c) if c.is_ascii_digit()) => tokens.push(
                     Token::Literal(Literals::Int(Int(true, Int::digs(0, &mut chars)))),
                 ),
@@ -214,6 +223,8 @@ impl FromStr for Tokens {
                     chars.next();
                     tokens.push(Token::Keyword(Keywords::LeftArrow))
                 }
+                '\n' => continue,
+                '*' if chars.peek() != Some(&' ') => tokens.push(Token::Keyword(Keywords::Deref)),
                 char if char.is_ascii_digit() => tokens.push(Token::Literal(Literals::Int(Int(
                     false,
                     Int::digs(char.to_digit(10).unwrap() as u128, &mut chars),
@@ -279,6 +290,8 @@ fn token_from_str(str: &str) -> Vec<Token> {
         "loop" => vec![Token::Keyword(Keywords::Loop)],
         "while" => vec![Token::Keyword(Keywords::While)],
         "break" => vec![Token::Keyword(Keywords::Break)],
+        "impl" => vec![Token::Keyword(Keywords::Impl)],
+        "as" => vec![Token::Keyword(Keywords::As)],
         "continue" => vec![Token::Keyword(Keywords::Continue)],
         "mut" => vec![Token::Keyword(Keywords::Mut)],
         "return" => vec![Token::Keyword(Keywords::Return)],

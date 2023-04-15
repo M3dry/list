@@ -12,6 +12,9 @@ pub mod r#struct;
 pub mod r#type;
 pub mod range;
 pub mod r#do;
+pub mod attribute;
+pub mod r#impl;
+pub mod r#as;
 
 use std::collections::VecDeque;
 

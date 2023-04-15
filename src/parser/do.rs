@@ -56,7 +56,8 @@ pub enum DoActions {
     /// (do let
     ///     StructType { field1 field2->varname field3-><_ var2> .. }
     ///     <- (func arg1 arg2))
-    Let(Destructuring, Exp),
+    Let(bool, Destructuring, Exp),
+    Assignment(String, Exp),
     /// (do if true
     ///         break
     ///     elif (= x 10)
@@ -79,10 +80,8 @@ pub enum DoActions {
     ///     (if true break continue))
     Loop(Box<DoActions>),
     While(Exp, Box<DoActions>),
-    Exp(Exp),
-    /// (do return
-    ///     (+ 4 1))
-    Return(Box<DoActions>),
+    Ret(Exp),
+    Semicolon(Exp),
     Break,
     Continue,
 }
@@ -99,6 +98,13 @@ impl TryFrom<&mut Parser> for DoActions {
                 Token::Keyword(Keywords::Let) => {
                     value.pop_front();
 
+                    let mutable = if let Some(&Token::Keyword(Keywords::Mut)) = value.first() {
+                        value.pop_front();
+                        true
+                    } else {
+                        false
+                    };
+
                     let pattern = error!(Destructuring::try_from(&mut *value), "DoActions")?;
                     let next = value.pop_front_err("DoActions")?;
                     if next != Token::Keyword(Keywords::RightArrow) {
@@ -108,7 +114,32 @@ impl TryFrom<&mut Parser> for DoActions {
                         ));
                     }
 
-                    Self::Let(pattern, error!(Exp::try_from(&mut *value), "DoActions")?)
+                    Self::Let(
+                        mutable,
+                        pattern,
+                        error!(Exp::try_from(&mut *value), "DoActions")?,
+                    )
+                }
+                Token::Identifier(_) => {
+                    if value.nth(1) == Some(&Token::Keyword(Keywords::RightArrow)) {
+                        let var = if let Some(Token::Identifier(iden)) = value.pop_front() {
+                            iden
+                        } else {
+                            unreachable!()
+                        };
+                        value.pop_front();
+
+                        Self::Assignment(var, error!(Exp::try_from(&mut *value), "DoActions")?)
+                    } else {
+                        let exp =error!(Exp::try_from(&mut *value), "DoActions")?;
+
+                        if let Some(&Token::Char(';')) = value.first() {
+                            value.pop_front();
+                            Self::Semicolon(exp)
+                        } else {
+                            Self::Ret(exp)
+                        }
+                    }
                 }
                 Token::Keyword(Keywords::If) => {
                     value.pop_front();
@@ -191,47 +222,16 @@ impl TryFrom<&mut Parser> for DoActions {
                     value.pop_front();
                     Self::Continue
                 }
-                Token::Keyword(Keywords::Return) => {
-                    value.pop_front();
+                _ => {
+                    let exp = error!(Exp::try_from(&mut *value), "DoActions")?;
 
-                    let ret = Box::new(error!(DoActions::try_from(&mut *value), "DoActions")?);
-
-                    match *ret {
-                        Self::Let(..) => {
-                            return Err(error!(
-                                "DoActions",
-                                format!("Can't return let from a do block")
-                            ));
-                        }
-                        Self::For { .. } => {
-                            return Err(error!(
-                                "DoActions",
-                                format!("Can't return for from a do block")
-                            ));
-                        }
-                        Self::While(..) => {
-                            return Err(error!(
-                                "DoActions",
-                                format!("Can't return while from a do block")
-                            ));
-                        }
-                        Self::Break => {
-                            return Err(error!(
-                                "DoActions",
-                                format!("Can't return break from a do block")
-                            ));
-                        }
-                        Self::Continue => {
-                            return Err(error!(
-                                "DoActions",
-                                format!("Can't return continue from a do block")
-                            ));
-                        }
-                        _ => (),
+                    if let Some(&Token::Char(';')) = value.first() {
+                        value.pop_front();
+                        Self::Semicolon(exp)
+                    } else {
+                        Self::Ret(exp)
                     }
-                    Self::Return(ret)
-                }
-                _ => Self::Exp(error!(Exp::try_from(&mut *value), "DoActions")?),
+                },
             },
         )
     }
@@ -240,10 +240,20 @@ impl TryFrom<&mut Parser> for DoActions {
 impl ToString for DoActions {
     fn to_string(&self) -> String {
         match self {
-            DoActions::Let(pattern, exp) => {
-                format!("let {} = {};", pattern.to_string(), exp.to_string())
+            Self::Let(mutable, pattern, exp) => {
+                format!(
+                    "let{} {} = {};",
+                    if *mutable {
+                        format!(" mut")
+                    } else {
+                        format!("")
+                    },
+                    pattern.to_string(),
+                    exp.to_string()
+                )
             }
-            DoActions::If {
+            Self::Assignment(var, exp) => format!("{var} = {};", exp.to_string()),
+            Self::If {
                 condition,
                 true_branch,
                 elif_branch,
@@ -270,7 +280,7 @@ impl ToString for DoActions {
                     }
                 )
             }
-            DoActions::For { vals, iter, body } => {
+            Self::For { vals, iter, body } => {
                 format!(
                     "{{for {} in {} {{{}}}}};",
                     vals.to_string(),
@@ -278,17 +288,14 @@ impl ToString for DoActions {
                     body.to_string()
                 )
             }
-            DoActions::Loop(body) => format!("loop {{{}}}", body.to_string()),
-            DoActions::While(cond, body) => {
+            Self::Loop(body) => format!("loop {{{}}}", body.to_string()),
+            Self::While(cond, body) => {
                 format!("while {} {{{}}}", cond.to_string(), body.to_string())
             }
-            DoActions::Exp(exp) => format!("{};", exp.to_string()),
-            DoActions::Return(action) => format!("{}", {
-                let str = action.to_string();
-                &str[..str.len() - 1].to_string()
-            }),
-            DoActions::Break => format!("break;"),
-            DoActions::Continue => format!("continue;"),
+            Self::Ret(action) => action.to_string(),
+            Self::Semicolon(exp) => format!("{};", exp.to_string()),
+            Self::Break => format!("break;"),
+            Self::Continue => format!("continue;"),
         }
     }
 }

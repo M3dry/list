@@ -1,12 +1,24 @@
 use crate::tokenizer::{Keywords, Token};
 
-use super::{error, r#type::{Type, Generic}, Parser, ParserError, ParserErrorStack};
+use super::{
+    attribute::Attribute,
+    error,
+    r#type::{Generic, Type},
+    Parser, ParserError, ParserErrorStack,
+};
 
 #[derive(Debug)]
-pub struct Struct {
-    name: String,
-    generics: Vec<Generic>,
-    fields: StructFields,
+pub enum Struct {
+    Touple {
+        name: String,
+        generics: Vec<Generic>,
+        types: Vec<Type>,
+    },
+    Normal {
+        name: String,
+        generics: Vec<Generic>,
+        fields: StructFields,
+    },
 }
 
 impl TryFrom<&mut Parser> for Struct {
@@ -53,41 +65,100 @@ impl TryFrom<&mut Parser> for Struct {
             }
         }
 
-        let fields = error!(StructFields::try_from(&mut *value), "Struct")?;
+        if value.first() == Some(&Token::CurlyOpen) {
+            let fields = error!(StructFields::try_from(&mut *value), "Struct")?;
 
-        let next = value.pop_front_err("Struct")?;
-        if next != Token::ParenClose {
-            return Err(error!(
-                "Struct",
-                format!("Expected ParenClose, got {next:#?}")
-            ));
+            let next = value.pop_front_err("Struct")?;
+            if next != Token::ParenClose {
+                return Err(error!(
+                    "Struct",
+                    format!("Expected ParenClose, got {next:#?}")
+                ));
+            }
+
+            Ok(Struct::Normal {
+                name,
+                generics,
+                fields,
+            })
+        } else {
+            let mut types = vec![];
+
+            loop {
+                let peek = value
+                    .first()
+                    .ok_or(error!("Struct", format!("Expected more tokens")))?;
+
+                if peek == &Token::ParenClose {
+                    value.pop_front();
+                    break Ok(Self::Touple {
+                        name,
+                        generics,
+                        types,
+                    });
+                }
+
+                types.push(error!(Type::try_from(&mut *value), "Struct")?)
+            }
         }
-
-        Ok(Struct {
-            name,
-            generics,
-            fields,
-        })
     }
 }
 
 impl ToString for Struct {
     fn to_string(&self) -> String {
-        format!(
-            "struct {}{} {}",
-            self.name,
-            if !self.generics.is_empty() {
+        match self {
+            Self::Touple {
+                name,
+                generics,
+                types,
+            } => {
                 format!(
-                    "<{}>",
-                    &self.generics.iter().fold(String::new(), |str, generic| {
-                        format!("{str}, {}", generic.to_string())
-                    })[2..]
+                    "struct {name}{}({});",
+                    if !generics.is_empty() {
+                        format!(
+                            "<{}>",
+                            &generics.iter().fold(String::new(), |str, generic| {
+                                format!("{str}, {}", generic.to_string())
+                            })[2..]
+                        )
+                    } else {
+                        format!("")
+                    },
+                    &if types.is_empty() {
+                        format!(", ")
+                    } else {
+                        format!(
+                            "{}",
+                            &types.iter().fold(String::new(), |str, r#type| format!(
+                                "{str}, {}",
+                                r#type.to_string()
+                            ))
+                        )
+                    }[2..]
                 )
-            } else {
-                format!("")
-            },
-            self.fields.to_string()
-        )
+            }
+            Self::Normal {
+                name,
+                generics,
+                fields,
+            } => {
+                format!(
+                    "struct {}{} {}",
+                    name,
+                    if !generics.is_empty() {
+                        format!(
+                            "<{}>",
+                            &generics.iter().fold(String::new(), |str, generic| {
+                                format!("{str}, {}", generic.to_string())
+                            })[2..]
+                        )
+                    } else {
+                        format!("")
+                    },
+                    fields.to_string()
+                )
+            }
+        }
     }
 }
 
@@ -142,6 +213,7 @@ impl ToString for StructFields {
 
 #[derive(Debug)]
 struct StructField {
+    attr: Option<Attribute>,
     name: String,
     r#type: Type,
 }
@@ -150,33 +222,57 @@ impl TryFrom<&mut Parser> for StructField {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("StructField")?;
-        if let Token::Identifier(iden) = next {
-            let name = iden;
+        let peek = value
+            .first()
+            .ok_or(error!("StructField", format!("Expected more tokens")))?;
 
-            let next = value.pop_front_err("StructField")?;
-            if next != Token::Keyword(Keywords::LeftArrow) {
+        let (attr, next) = if peek == &Token::Char('#') {
+            (
+                Some(error!(Attribute::try_from(&mut *value), "StructField")?),
+                value.pop_front_err("StructField")?,
+            )
+        } else {
+            (None, value.pop_front_err("StructField")?)
+        };
+
+        Ok(match next {
+            Token::Identifier(iden) => {
+                let name = iden;
+
+                let next = value.pop_front_err("StructField")?;
+                if next != Token::Keyword(Keywords::LeftArrow) {
+                    return Err(error!(
+                        "StructField",
+                        format!("Expected arror keyword, got {next:#?}")
+                    ))?;
+                }
+
+                let r#type = error!(Type::try_from(&mut *value), "StructField")?;
+
+                StructField { attr, name, r#type }
+            }
+            token => {
                 return Err(error!(
                     "StructField",
-                    format!("Expected arror keyword, got {next:#?}")
-                ))?;
+                    format!("Expected identifier, got {token:#?}")
+                ))
             }
-
-            let r#type = error!(Type::try_from(&mut *value), "StructField")?;
-
-            Ok(StructField { name, r#type })
-        } else {
-            Err(error!(
-                "StructField",
-                format!("Expected identifier, got {next:#?}")
-            ))
-        }
+        })
     }
 }
 
 impl ToString for StructField {
     fn to_string(&self) -> String {
-        format!("{}: {}", self.name, self.r#type.to_string())
+        format!(
+            "{}{}: {}",
+            if let Some(attr) = &self.attr {
+                format!("{}\n", attr.to_string())
+            } else {
+                format!("")
+            },
+            self.name,
+            self.r#type.to_string()
+        )
     }
 }
 

@@ -1,6 +1,12 @@
 use crate::tokenizer::{Keywords, Token};
 
-use super::{error, r#struct::StructFields, r#type::{Type, Generic}, Parser, ParserError, ParserErrorStack};
+use super::{
+    attribute::Attribute,
+    error,
+    r#struct::StructFields,
+    r#type::{Generic, Type},
+    Parser, ParserError, ParserErrorStack,
+};
 #[derive(Debug)]
 pub struct Enum {
     name: String,
@@ -43,9 +49,7 @@ impl TryFrom<&mut Parser> for Enum {
                 .ok_or(error!("Enum", format!("Expected more tokens")))?;
 
             if let Token::Char(':') = peek {
-                generics.push(
-                    error!(Generic::try_from(&mut *value), "Enum")?
-                )
+                generics.push(error!(Generic::try_from(&mut *value), "Enum")?)
             } else {
                 break;
             }
@@ -100,12 +104,19 @@ enum Variant {
     Simple(String),
     WithType(String, Vec<Type>),
     Struct(String, StructFields),
+    Attr(Attribute, Box<Variant>),
 }
 
 impl TryFrom<&mut Parser> for Variant {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
+        if value.first() == Some(&Token::Char('#')) {
+            return Ok(Self::Attr(
+                error!(Attribute::try_from(&mut *value), "Variant")?,
+                Box::new(error!(Variant::try_from(&mut *value), "Variant")?),
+            ));
+        }
         match value.pop_front_err("Variant")? {
             Token::Identifier(iden) => Ok(Variant::Simple(iden)),
             Token::ParenOpen => {
@@ -169,14 +180,15 @@ impl TryFrom<&mut Parser> for Variant {
 impl ToString for Variant {
     fn to_string(&self) -> String {
         match self {
-            Variant::Simple(name) => format!("{name}"),
-            Variant::WithType(name, types) => format!(
+            Self::Simple(name) => format!("{name}"),
+            Self::WithType(name, types) => format!(
                 "{name}({})",
                 &types.iter().fold(String::new(), |str, r#type| {
                     format!("{str}, {}", r#type.to_string())
                 })[2..]
             ),
-            Variant::Struct(name, fields) => format!("{name} {}", fields.to_string()),
+            Self::Struct(name, fields) => format!("{name} {}", fields.to_string()),
+            Self::Attr(attr, variant) => format!("{}\n{}", attr.to_string(), variant.to_string()),
         }
     }
 }

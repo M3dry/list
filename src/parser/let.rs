@@ -2,6 +2,9 @@ use crate::tokenizer::{Keywords, Token};
 
 use super::{error, exp::Exp, Parser, ParserError, ParserErrorStack};
 
+/// (let ((x 10)
+///       (y (+ 4 10)))
+///     (* x y))
 #[derive(Debug)]
 pub struct Let {
     vars: Vec<(String, Exp)>,
@@ -77,9 +80,15 @@ impl TryFrom<&mut Parser> for Let {
             }
         }
 
+        let body = error!(Exp::try_from(&mut *value), "Let")?;
+        let next = value.pop_front_err("Let")?;
+        if next != Token::ParenClose {
+            return Err(error!("Let", format!("Expected parenClose, got {next:#?}")))
+        }
+
         Ok(Let {
             vars,
-            body: Exp::try_from(&mut *value)?,
+            body,
         })
     }
 }
