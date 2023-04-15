@@ -36,7 +36,7 @@ Ok(
     },
 )
 
-(let ((x (+ 10 20)) (y (= 10 10))) (if y x 0))
+(let ((x (+ 10 20)) (y (= 10 10))) (if y x else 0))
 Ok(
     Let {
         vars: [
@@ -95,6 +95,7 @@ Ok(
                 true_branch: Variable(
                     "x",
                 ),
+                elif_branch: [],
                 false_branch: Literal(
                     Int(
                         Int(

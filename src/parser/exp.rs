@@ -23,6 +23,7 @@ pub enum Exp {
     Range(super::range::Range),
     Do(Box<Do>),
     Variable(String),
+    Field(Box<Exp>, String),
     Literal(Literals),
     TypeCreation(TypeCreation),
     ErrorOut(Box<Exp>),
@@ -34,9 +35,9 @@ impl TryFrom<&mut Parser> for Exp {
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
         let peek = value
             .first()
-            .ok_or(error!("Self", format!("Selfected more tokens")))?;
+            .ok_or(error!("Self", format!("Expected more tokens")))?;
 
-        let ret = match peek {
+        let mut ret = match peek {
             Token::Identifier(_) => {
                 if matches!(
                     value.nth(1),
@@ -92,7 +93,7 @@ impl TryFrom<&mut Parser> for Exp {
             Token::ParenOpen => {
                 match value
                     .nth(1)
-                    .ok_or(error!("Self", format!("Selfected more tokens")))?
+                    .ok_or(error!("Self", format!("Expected more tokens")))?
                 {
                     Token::Keyword(Keywords::Not) => {
                         value.pop_front();
@@ -118,10 +119,33 @@ impl TryFrom<&mut Parser> for Exp {
                     Token::Identifier(_) => match value.nth(2) {
                         Some(&Token::Char('.')) => {
                             value.pop_front();
-                            if let Token::Identifier(iden) = value.pop_front_err("Exp")? {
+                            let var = if let Token::Identifier(iden) = value.pop_front_err("Exp")? {
                                 Self::Variable(iden)
                             } else {
                                 unreachable!()
+                            };
+                            value.pop_front();
+                            let method = match value.pop_front_err("Exp")? {
+                                Token::Identifier(iden) => iden,
+                                token => {
+                                    return Err(error!(
+                                        "Exp",
+                                        format!("Expected iden, got {token:#?}")
+                                    ))
+                                }
+                            };
+                            let mut args = vec![];
+
+                            loop {
+                                let peek = value
+                                    .first()
+                                    .ok_or(error!("Exp", format!("Expected more tokens")))?;
+                                if peek == &Token::ParenClose {
+                                    value.pop_front();
+                                    break Self::MethodCall(Box::new(var), method, args);
+                                }
+
+                                args.push(error!(Exp::try_from(&mut *value), "Exp")?)
                             }
                         }
                         Some(&Token::Keyword(Keywords::LeftArrow) | &Token::CurlyOpen) => {
@@ -140,7 +164,7 @@ impl TryFrom<&mut Parser> for Exp {
                             loop {
                                 let peek = value
                                     .first()
-                                    .ok_or(error!("Self", format!("Selfected more tokens")))?;
+                                    .ok_or(error!("Self", format!("Expected more tokens")))?;
 
                                 if peek == &Token::ParenClose {
                                     value.pop_front();
@@ -162,7 +186,7 @@ impl TryFrom<&mut Parser> for Exp {
                             if next != Token::ParenClose {
                                 return Err(error!(
                                     "Self",
-                                    format!("Selfected parenClose, got {next:#?}")
+                                    format!("Expected parenClose, got {next:#?}")
                                 ));
                             }
                             return Ok(infix);
@@ -172,19 +196,41 @@ impl TryFrom<&mut Parser> for Exp {
 
                         let peek = value
                             .first()
-                            .ok_or(error!("Self", format!("Selfected more tokens")))?;
+                            .ok_or(error!("Self", format!("Expected more tokens")))?;
                         if peek == &Token::ParenClose {
                             value.pop_front();
                             exp
                         } else if peek == &Token::Char('.') {
-                            exp
+                            value.pop_front();
+                            let method = match value.pop_front_err("Exp")? {
+                                Token::Identifier(iden) => iden,
+                                token => {
+                                    return Err(error!(
+                                        "Exp",
+                                        format!("Expected iden, got {token:#?}")
+                                    ))
+                                }
+                            };
+                            let mut args = vec![];
+
+                            loop {
+                                let peek = value
+                                    .first()
+                                    .ok_or(error!("Exp", format!("Expected more tokens")))?;
+                                if peek == &Token::ParenClose {
+                                    value.pop_front();
+                                    break Self::MethodCall(Box::new(exp), method, args);
+                                }
+
+                                args.push(error!(Exp::try_from(&mut *value), "Exp")?)
+                            }
                         } else {
                             let mut params = vec![];
 
                             loop {
                                 let peek = value
                                     .first()
-                                    .ok_or(error!("Self", format!("Selfected more tokens")))?;
+                                    .ok_or(error!("Self", format!("Expected more tokens")))?;
 
                                 if peek == &Token::ParenClose {
                                     value.pop_front();
@@ -202,32 +248,25 @@ impl TryFrom<&mut Parser> for Exp {
             token => return Err(error!("Exp", format!("Didn't expected this: {token:#?}"))),
         };
 
-        match value.first() {
-            Some(&Token::Char('?')) => {
-                value.pop_front();
-                Ok(Self::ErrorOut(Box::new(ret)))
-            }
-            Some(&Token::Char('.')) => {
-                value.pop_front();
-                let method = match value.pop_front_err("Exp")? {
-                    Token::Identifier(iden) => iden,
-                    token => return Err(error!("Exp", format!("Expected iden, got {token:#?}"))),
-                };
-                let mut args = vec![];
-
-                loop {
-                    let peek = value
-                        .first()
-                        .ok_or(error!("Exp", format!("Expected more tokens")))?;
-                    if peek == &Token::ParenClose {
-                        value.pop_front();
-                        break Ok(Self::MethodCall(Box::new(ret), method, args));
-                    }
-
-                    args.push(error!(Exp::try_from(&mut *value), "Exp")?)
+        loop {
+            ret = match value.first() {
+                Some(&Token::Char('?')) => {
+                    value.pop_front();
+                    Self::ErrorOut(Box::new(ret))
                 }
-            }
-            _ => Ok(ret),
+                Some(&Token::Slash) => {
+                    value.pop_front();
+                    let field = match value.pop_front_err("Exp")? {
+                        Token::Identifier(iden) => iden,
+                        token => {
+                            return Err(error!("Exp", format!("Expected iden, got {token:#?}")))
+                        }
+                    };
+
+                    Self::Field(Box::new(ret), field)
+                }
+                _ => return Ok(ret),
+            };
         }
     }
 }
@@ -253,13 +292,13 @@ impl ToString for Exp {
             Self::MethodCall(exp, method, args) => format!(
                 "{{{}}}.{method}({})",
                 exp.to_string(),
-                if args.is_empty() {
+                &if args.is_empty() {
                     format!(", ")
                 } else {
                     args.iter().fold(String::new(), |str, arg| {
                         format!("{str}, {}", arg.to_string())
                     })
-                }
+                }[2..]
             ),
             Self::Ref(exp) => format!("{{&{{{}}}}}", exp.to_string()),
             Self::MutRef(exp) => format!("{{&mut {{{}}}}}", exp.to_string()),
@@ -271,6 +310,7 @@ impl ToString for Exp {
             Self::Range(range) => range.to_string(),
             Self::Do(r#do) => format!("{}", r#do.to_string()),
             Self::Variable(var) => var.to_string(),
+            Self::Field(exp, field) => format!("{}.{field}", exp.to_string()),
             Self::Literal(literal) => literal.to_string(),
             Self::TypeCreation(creation) => format!("{{{}}}", creation.to_string()),
             Self::ErrorOut(exp) => format!("{}?", exp.to_string()),

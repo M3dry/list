@@ -53,9 +53,38 @@ impl ToString for Do {
 
 #[derive(Debug)]
 pub enum DoActions {
-    Let(LetMatch, Exp),
+    /// (do let
+    ///     StructType { field1 field2->varname field3-><_ var2> .. }
+    ///     <- (func arg1 arg2))
+    Let(Destructuring, Exp),
+    /// (do if true
+    ///         break
+    ///     elif (= x 10)
+    ///         continue)
+    If {
+        condition: Exp,
+        true_branch: Box<DoActions>,
+        elif_branch: Vec<(Exp, DoActions)>,
+        false_branch: Option<Box<DoActions>>,
+    },
+    /// (do
+    ///     for i, val <- (variable.iter)
+    ///         (println! "{}: {}" i val))
+    For {
+        vals: Destructuring,
+        iter: Exp,
+        body: Box<DoActions>,
+    },
+    /// (do loop
+    ///     (if true break continue))
+    Loop(Box<DoActions>),
+    While(Exp, Box<DoActions>),
     Exp(Exp),
-    Return(Exp),
+    /// (do return
+    ///     (+ 4 1))
+    Return(Box<DoActions>),
+    Break,
+    Continue,
 }
 
 impl TryFrom<&mut Parser> for DoActions {
@@ -70,7 +99,7 @@ impl TryFrom<&mut Parser> for DoActions {
                 Token::Keyword(Keywords::Let) => {
                     value.pop_front();
 
-                    let pattern = error!(LetMatch::try_from(&mut *value), "DoActions")?;
+                    let pattern = error!(Destructuring::try_from(&mut *value), "DoActions")?;
                     let next = value.pop_front_err("DoActions")?;
                     if next != Token::Keyword(Keywords::RightArrow) {
                         return Err(error!(
@@ -81,10 +110,126 @@ impl TryFrom<&mut Parser> for DoActions {
 
                     Self::Let(pattern, error!(Exp::try_from(&mut *value), "DoActions")?)
                 }
+                Token::Keyword(Keywords::If) => {
+                    value.pop_front();
+                    let condition = error!(Exp::try_from(&mut *value), "DoActions")?;
+                    let true_branch =
+                        Box::new(error!(DoActions::try_from(&mut *value), "DoActions")?);
+                    let mut elif_branch = vec![];
+
+                    loop {
+                        let peek = value.first();
+
+                        if peek == Some(&Token::Keyword(Keywords::Elif)) {
+                            value.pop_front();
+                            let cond = error!(Exp::try_from(&mut *value), "DoActions")?;
+                            let body = error!(DoActions::try_from(&mut *value), "DoActions")?;
+
+                            elif_branch.push((cond, body))
+                        }
+
+                        break;
+                    }
+
+                    if let Some(&Token::Keyword(Keywords::Else)) = value.first() {
+                        value.pop_front();
+
+                        Self::If {
+                            condition,
+                            true_branch,
+                            elif_branch,
+                            false_branch: Some(Box::new(error!(
+                                DoActions::try_from(&mut *value),
+                                "DoActions"
+                            )?)),
+                        }
+                    } else {
+                        Self::If {
+                            condition,
+                            true_branch,
+                            elif_branch,
+                            false_branch: None,
+                        }
+                    }
+                }
+                Token::Keyword(Keywords::For) => {
+                    value.pop_front();
+                    let vals = error!(Destructuring::try_from(&mut *value), "DoActions")?;
+
+                    let next = value.pop_front_err("DoActions")?;
+                    if next != Token::Keyword(Keywords::RightArrow) {
+                        return Err(error!(
+                            "DoActions",
+                            format!("Expected rightArrow, got {next:#?}")
+                        ));
+                    }
+
+                    let iter = error!(Exp::try_from(&mut *value), "DoActions")?;
+                    let body = Box::new(error!(DoActions::try_from(&mut *value), "DoActions")?);
+
+                    Self::For { vals, iter, body }
+                }
+                Token::Keyword(Keywords::Loop) => {
+                    value.pop_front();
+                    Self::Loop(Box::new(error!(
+                        DoActions::try_from(&mut *value),
+                        "DoActions"
+                    )?))
+                }
+                Token::Keyword(Keywords::While) => {
+                    value.pop_front();
+                    let cond = error!(Exp::try_from(&mut *value), "DoActions")?;
+                    let body = Box::new(error!(DoActions::try_from(&mut *value), "DoActions")?);
+
+                    Self::While(cond, body)
+                }
+                Token::Keyword(Keywords::Break) => {
+                    value.pop_front();
+                    Self::Break
+                }
+                Token::Keyword(Keywords::Continue) => {
+                    value.pop_front();
+                    Self::Continue
+                }
                 Token::Keyword(Keywords::Return) => {
                     value.pop_front();
 
-                    Self::Return(error!(Exp::try_from(&mut *value), "DoActions")?)
+                    let ret = Box::new(error!(DoActions::try_from(&mut *value), "DoActions")?);
+
+                    match *ret {
+                        Self::Let(..) => {
+                            return Err(error!(
+                                "DoActions",
+                                format!("Can't return let from a do block")
+                            ));
+                        }
+                        Self::For { .. } => {
+                            return Err(error!(
+                                "DoActions",
+                                format!("Can't return for from a do block")
+                            ));
+                        }
+                        Self::While(..) => {
+                            return Err(error!(
+                                "DoActions",
+                                format!("Can't return while from a do block")
+                            ));
+                        }
+                        Self::Break => {
+                            return Err(error!(
+                                "DoActions",
+                                format!("Can't return break from a do block")
+                            ));
+                        }
+                        Self::Continue => {
+                            return Err(error!(
+                                "DoActions",
+                                format!("Can't return continue from a do block")
+                            ));
+                        }
+                        _ => (),
+                    }
+                    Self::Return(ret)
                 }
                 _ => Self::Exp(error!(Exp::try_from(&mut *value), "DoActions")?),
             },
@@ -98,14 +243,58 @@ impl ToString for DoActions {
             DoActions::Let(pattern, exp) => {
                 format!("let {} = {};", pattern.to_string(), exp.to_string())
             }
+            DoActions::If {
+                condition,
+                true_branch,
+                elif_branch,
+                false_branch,
+            } => {
+                format!(
+                    "{{if {} {{{}}}{}{}}}",
+                    condition.to_string(),
+                    true_branch.to_string(),
+                    &if elif_branch.is_empty() {
+                        format!(" else if ")
+                    } else {
+                        elif_branch.iter().fold(String::new(), |str, elif| {
+                            format!(
+                                "{str} else if {} {{{}}}",
+                                elif.0.to_string(),
+                                elif.1.to_string()
+                            )
+                        })
+                    }[9..],
+                    match false_branch {
+                        Some(body) => format!(" else {{{}}}", body.to_string()),
+                        None => format!(""),
+                    }
+                )
+            }
+            DoActions::For { vals, iter, body } => {
+                format!(
+                    "{{for {} in {} {{{}}}}};",
+                    vals.to_string(),
+                    iter.to_string(),
+                    body.to_string()
+                )
+            }
+            DoActions::Loop(body) => format!("loop {{{}}}", body.to_string()),
+            DoActions::While(cond, body) => {
+                format!("while {} {{{}}}", cond.to_string(), body.to_string())
+            }
             DoActions::Exp(exp) => format!("{};", exp.to_string()),
-            DoActions::Return(exp) => format!("{}", exp.to_string()),
+            DoActions::Return(action) => format!("{}", {
+                let str = action.to_string();
+                &str[..str.len() - 1].to_string()
+            }),
+            DoActions::Break => format!("break;"),
+            DoActions::Continue => format!("continue;"),
         }
     }
 }
 
 #[derive(Debug)]
-pub enum LetMatch {
+pub enum Destructuring {
     Touple(Vec<Self>),
     Array(Vec<Self>),
     Struct(NamespacedType, Vec<LetStructField>),
@@ -113,7 +302,7 @@ pub enum LetMatch {
     Rest,
 }
 
-impl TryFrom<&mut Parser> for LetMatch {
+impl TryFrom<&mut Parser> for Destructuring {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
@@ -155,7 +344,7 @@ impl TryFrom<&mut Parser> for LetMatch {
                         break Self::Touple(matches);
                     }
 
-                    matches.push(error!(LetMatch::try_from(&mut *value), "LetMatch")?)
+                    matches.push(error!(Destructuring::try_from(&mut *value), "LetMatch")?)
                 }
             }
             Token::BracketOpen => {
@@ -171,12 +360,12 @@ impl TryFrom<&mut Parser> for LetMatch {
                         break Self::Array(matches);
                     }
 
-                    matches.push(error!(LetMatch::try_from(&mut *value), "LetMatch")?)
+                    matches.push(error!(Destructuring::try_from(&mut *value), "LetMatch")?)
                 }
             }
             Token::DoubleDot => Self::Rest,
             Token::ParenOpen => {
-                let ret = error!(LetMatch::try_from(&mut *value), "LetMatch")?;
+                let ret = error!(Destructuring::try_from(&mut *value), "LetMatch")?;
 
                 let next = value.pop_front_err("LetMatch")?;
                 if next != Token::ParenClose {
@@ -193,7 +382,7 @@ impl TryFrom<&mut Parser> for LetMatch {
     }
 }
 
-impl ToString for LetMatch {
+impl ToString for Destructuring {
     fn to_string(&self) -> String {
         match self {
             Self::Touple(exps) => format!(
@@ -236,7 +425,7 @@ impl ToString for LetMatch {
 #[derive(Debug)]
 pub enum LetStructField {
     Simple(String),
-    Named(String, Box<LetMatch>),
+    Named(String, Box<Destructuring>),
     Rest,
 }
 
@@ -253,7 +442,10 @@ impl TryFrom<&mut Parser> for LetStructField {
                 value.pop_front();
                 Self::Named(
                     name,
-                    Box::new(error!(LetMatch::try_from(&mut *value), "LetStructField")?),
+                    Box::new(error!(
+                        Destructuring::try_from(&mut *value),
+                        "LetStructField"
+                    )?),
                 )
             }
             Token::Identifier(iden) => Self::Simple(iden),

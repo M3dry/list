@@ -44,7 +44,7 @@ Ok(
     ),
 )
 
-(let ((x (+ 10 20)) (y (= 10 10))) (if y x 0))
+(let ((x (+ 10 20)) (y (= 10 10))) (if y x else 0))
 Ok(
     Tokens(
         [
@@ -115,6 +115,9 @@ Ok(
             ),
             Identifier(
                 "x",
+            ),
+            Keyword(
+                Else,
             ),
             Literal(
                 Int(

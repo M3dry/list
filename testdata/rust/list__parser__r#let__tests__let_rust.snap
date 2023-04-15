@@ -6,7 +6,7 @@ expression: "contents.lines().filter_map(|line|\n                if line != \"\"
 {let x = {(10) + (20)};
 x}
 
-(let ((x (+ 10 20)) (y (= 10 10))) (if y x 0))
+(let ((x (+ 10 20)) (y (= 10 10))) (if y x else 0))
 {let x = {(10) + (20)};
 let y = {(10) == (10)};
 {if y {x} else {0}}}

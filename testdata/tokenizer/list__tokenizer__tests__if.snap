@@ -2,7 +2,7 @@
 source: src/tokenizer.rs
 expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{:#?}\", Tokens :: from_str(line)))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
 ---
-(if true 10 4)
+(if true 10 else 4)
 Ok(
     Tokens(
         [
@@ -23,6 +23,9 @@ Ok(
                     ),
                 ),
             ),
+            Keyword(
+                Else,
+            ),
             Literal(
                 Int(
                     Int(
@@ -36,7 +39,7 @@ Ok(
     ),
 )
 
-(if (= 10 5) 10 (func 4 10))
+(if (= 10 5) 10 else (func 4 10))
 Ok(
     Tokens(
         [
@@ -73,6 +76,9 @@ Ok(
                     ),
                 ),
             ),
+            Keyword(
+                Else,
+            ),
             ParenOpen,
             Identifier(
                 "func",
@@ -99,7 +105,7 @@ Ok(
     ),
 )
 
-(if (= (func 1 10) (xyzfunc 100 (+ 1 10))) 100 (xyzfunc 100 200))
+(if (= (func 1 10) (xyzfunc 100 (+ 1 10))) 100 elif (> 10 4) 10 else (xyzfunc 100 200))
 Ok(
     Tokens(
         [
@@ -174,6 +180,39 @@ Ok(
                         100,
                     ),
                 ),
+            ),
+            Keyword(
+                Elif,
+            ),
+            ParenOpen,
+            AngleBracketClose,
+            Literal(
+                Int(
+                    Int(
+                        false,
+                        10,
+                    ),
+                ),
+            ),
+            Literal(
+                Int(
+                    Int(
+                        false,
+                        4,
+                    ),
+                ),
+            ),
+            ParenClose,
+            Literal(
+                Int(
+                    Int(
+                        false,
+                        10,
+                    ),
+                ),
+            ),
+            Keyword(
+                Else,
             ),
             ParenOpen,
             Identifier(
