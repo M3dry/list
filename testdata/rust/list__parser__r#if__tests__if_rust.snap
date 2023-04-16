@@ -6,7 +6,7 @@ expression: "contents.lines().filter_map(|line|\n                if line != \"\"
 if true {10} else {4}
 
 (if (= 10 5) 10 else (func 4 10))
-if {(10) == (5)} {10} else {{func(4, 10)}}
+if (10) == (5) {10} else {func(4, 10)}
 
 (if (= (func 1 10) (xyzfunc 100 (+ 1 10))) 100 elif (> 10 4) 10 else (xyzfunc 100 200))
-if {({func(1, 10)}) == ({xyzfunc(100, {(1) + (10)})})} {100} else if {(10) > (4)} {10} else {{xyzfunc(100, 200)}}
+if (func(1, 10)) == (xyzfunc(100, (1) + (10))) {100} else if (10) > (4) {10} else {xyzfunc(100, 200)}

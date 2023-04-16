@@ -86,6 +86,7 @@ impl ToString for Literals {
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Keywords {
+    TurboStart,
     If,
     Else,
     Elif,
@@ -260,9 +261,15 @@ impl FromStr for Tokens {
                         }
                     }
 
+
                     tokens.append(&mut token_from_str(
                         &chs.into_iter().collect::<String>()[..],
                     ));
+
+                    if chars.peek() == Some(&'<') {
+                        chars.next();
+                        tokens.push(Token::Keyword(Keywords::TurboStart))
+                    }
                 }
                 char if char != ' ' => tokens.push(Token::Char(char)),
                 _ => continue,

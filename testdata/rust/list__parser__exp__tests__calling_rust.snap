@@ -3,16 +3,16 @@ source: src/parser/exp.rs
 expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{}\",\n                                |parser|\n    match Exp::try_from(parser) {\n        Ok(res) => res.to_string(),\n        Err(err) => format!(\"{err:#?}\"),\n    }\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
 ---
 (+ 4 1)
-{(4) + (1)}
+(4) + (1)
 
 (= 10 xy)
-{(10) == (xy)}
+(10) == (xy)
 
 (func 100 (+ 4 10))
-{func(100, {(4) + (10)})}
+func(100, (4) + (10))
 
 (= (func 69 (+ 1 10)) (func 10 100))
-{({func(69, {(1) + (10)})}) == ({func(10, 100)})}
+(func(69, (1) + (10))) == (func(10, 100))
 
 ((lambda (x y z) (and (= x y) (= x z))) 10 20 10)
-{(|x, y, z| {({(x) == (y)}) && ({(x) == (z)})})(10, 20, 10)}
+(|x, y, z| ((x) == (y)) && ((x) == (z)))(10, 20, 10)

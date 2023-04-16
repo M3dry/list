@@ -1,6 +1,6 @@
 use crate::tokenizer::{BuiltinTypes, Int, Keywords, Literals, Token};
 
-use super::{error, Parser, ParserError, ParserErrorStack};
+use super::{error, exp::TurboFish, Parser, ParserError, ParserErrorStack};
 
 #[derive(Debug)]
 pub enum Type {
@@ -244,13 +244,35 @@ impl ToString for Lifetimes {
 #[derive(Debug)]
 pub enum NamespacedType {
     Space(String, Box<NamespacedType>),
-    Final(String),
+    Str(String),
+    TurboFish(TurboFish),
+    TurboFishSpace(TurboFish, Box<NamespacedType>),
 }
 
 impl TryFrom<&mut Parser> for NamespacedType {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
+        if value.nth(1) == Some(&Token::AngleBracketOpen) {
+            let turbofish = error!(TurboFish::try_from(&mut *value), "NamespacedType")?;
+
+            return Ok(
+                if value.first() == Some(&Token::Keyword(Keywords::LeftArrow)) {
+                    value.pop_front();
+
+                    Self::TurboFishSpace(
+                        turbofish,
+                        Box::new(error!(
+                            NamespacedType::try_from(&mut *value),
+                            "NamespacedType"
+                        )?),
+                    )
+                } else {
+                    Self::TurboFish(turbofish)
+                },
+            );
+        }
+
         Ok(match value.pop_front_err("NamespacedType")? {
             Token::Identifier(iden)
                 if value.first() == Some(&Token::Keyword(Keywords::LeftArrow)) =>
@@ -264,7 +286,7 @@ impl TryFrom<&mut Parser> for NamespacedType {
                     )?),
                 )
             }
-            Token::Identifier(iden) => NamespacedType::Final(iden),
+            Token::Identifier(iden) => NamespacedType::Str(iden),
             token => {
                 return Err(error!(
                     "NamespacedType",
@@ -279,7 +301,9 @@ impl ToString for NamespacedType {
     fn to_string(&self) -> String {
         match self {
             Self::Space(name, namespaces) => format!("{name}::{}", namespaces.to_string()),
-            Self::Final(name) => format!("{name}"),
+            Self::Str(name) => format!("{name}"),
+            Self::TurboFish(turbofish) => turbofish.to_string(),
+            Self::TurboFishSpace(turbofish, namespaces) => format!("{}::{}", turbofish.to_string(), namespaces.to_string()),
         }
     }
 }

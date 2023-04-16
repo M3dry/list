@@ -46,6 +46,7 @@ Ok(
                 StructFields(
                     [
                         StructField {
+                            attr: None,
                             name: "x",
                             type: Generic(
                                 Use(
@@ -54,6 +55,7 @@ Ok(
                             ),
                         },
                         StructField {
+                            attr: None,
                             name: "y",
                             type: Builtin(
                                 I32,

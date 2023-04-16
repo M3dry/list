@@ -10,6 +10,7 @@ Ok(
         args: ArgsTyped {
             lifetimes: [],
             generics: [],
+            selft: None,
             args: [
                 (
                     "x",
@@ -38,6 +39,7 @@ Ok(
         args: ArgsTyped {
             lifetimes: [],
             generics: [],
+            selft: None,
             args: [
                 (
                     "x",
@@ -81,6 +83,7 @@ Ok(
                     "t",
                 ),
             ],
+            selft: None,
             args: [
                 (
                     "x",
@@ -119,6 +122,7 @@ Ok(
         args: ArgsTyped {
             lifetimes: [],
             generics: [],
+            selft: None,
             args: [],
         },
         return_type: Touple(

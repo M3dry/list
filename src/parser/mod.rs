@@ -1,22 +1,22 @@
-pub mod r#use;
 pub mod args;
+pub mod r#as;
+pub mod attribute;
 pub mod defun;
+pub mod r#do;
 pub mod r#enum;
 pub mod exp;
 pub mod file;
 pub mod r#if;
+pub mod r#impl;
 pub mod lambda;
 pub mod r#let;
 pub mod r#match;
+pub mod range;
 pub mod r#struct;
 pub mod r#type;
-pub mod range;
-pub mod r#do;
-pub mod attribute;
-pub mod r#impl;
-pub mod r#as;
+pub mod r#use;
 
-use std::collections::VecDeque;
+use std::{collections::VecDeque, path::PathBuf};
 
 use std::ops::Index;
 
@@ -47,10 +47,23 @@ macro_rules! error {
 
 macro_rules! snapshot {
     ($name:tt, $func:expr, $path:tt) => {
-        snapshot!($name, |parser| format!("{:#?}", $func(parser)), $path, "../../testdata/parser/");
+        snapshot!(
+            $name,
+            |parser| format!("{:#?}", $func(parser)),
+            $path,
+            "../../testdata/parser/"
+        );
     };
     ($name:tt, $func:expr, $path:tt, rust) => {
-        snapshot!($name, |parser| match $func(parser) { Ok(res) => res.to_string(), Err(err) => format!("{err:#?}") }, $path, "../../testdata/rust/");
+        snapshot!(
+            $name,
+            |parser| match $func(parser) {
+                Ok(res) => res.to_string(),
+                Err(err) => format!("{err:#?}"),
+            },
+            $path,
+            "../../testdata/rust/"
+        );
     };
     ($name:tt, $func:expr, $path:tt, $out:literal) => {
         #[test]
@@ -64,7 +77,10 @@ macro_rules! snapshot {
                 insta::assert_snapshot!(contents
                     .lines()
                     .filter_map(|line| if line != "" {
-                        Some(format!("{line}\n{}", $func(&mut Parser::new(line.parse().unwrap()))))
+                        Some(format!(
+                            "{line}\n{}",
+                            $func(&mut Parser::new(line.parse().unwrap()))
+                        ))
                     } else {
                         None
                     })
@@ -77,6 +93,8 @@ macro_rules! snapshot {
 
 pub(crate) use error;
 pub(crate) use snapshot;
+
+use self::file::File;
 
 #[derive(Debug)]
 pub struct ParserError {
@@ -136,14 +154,33 @@ impl Parser {
         }
     }
 
-    fn pop_front_err(
-        &mut self,
-        func: &'static str,
-    ) -> Result<Token, ParserError> {
-        self.tokens.pop_front().ok_or(error!(func, "Expected more tokens".to_string()))
+    fn pop_front_err(&mut self, func: &'static str) -> Result<Token, ParserError> {
+        self.tokens
+            .pop_front()
+            .ok_or(error!(func, "Expected more tokens".to_string()))
     }
 
     fn pop_front(&mut self) -> Option<Token> {
         self.tokens.pop_front()
     }
+}
+
+pub(crate) fn from_file(path: &PathBuf) -> Result<String, ParserError> {
+    File::try_from(&mut Parser::new(
+        std::fs::read_to_string(&path)
+            .map_err(|err| {
+                error!(
+                    "from_file",
+                    format!("Got an err while opening the file at {path:#?}: {err:#?}")
+                )
+            })?
+            .parse()
+            .map_err(|err| {
+                error!(
+                    "from_file",
+                    format!("Something went wrong while tokenizing file at {path:#?}: {err:#?}")
+                )
+            })?,
+    ))
+    .map(|f| f.to_string())
 }

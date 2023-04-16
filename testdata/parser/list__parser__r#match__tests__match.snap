@@ -55,13 +55,14 @@ Ok(
 Ok(
     Match {
         against: TypeCreation(
-            Simple(
+            Vars(
                 Space(
                     "Option",
-                    Final(
+                    Str(
                         "None",
                     ),
                 ),
+                [],
             ),
         ),
         branches: [
@@ -69,7 +70,7 @@ Ok(
                 pattern: Enum(
                     Space(
                         "Option",
-                        Final(
+                        Str(
                             "None",
                         ),
                     ),
@@ -88,7 +89,7 @@ Ok(
                 pattern: EnumVars(
                     Space(
                         "Option",
-                        Final(
+                        Str(
                             "Some",
                         ),
                     ),
@@ -128,7 +129,7 @@ Ok(
                 pattern: EnumVars(
                     Space(
                         "Option",
-                        Final(
+                        Str(
                             "Some",
                         ),
                     ),
@@ -157,7 +158,7 @@ Ok(
     Match {
         against: TypeCreation(
             Struct(
-                Final(
+                Str(
                     "StructType",
                 ),
                 [
@@ -186,7 +187,7 @@ Ok(
         branches: [
             Branch {
                 pattern: Struct(
-                    Final(
+                    Str(
                         "StructType",
                     ),
                     [
@@ -227,7 +228,7 @@ Ok(
             },
             Branch {
                 pattern: Struct(
-                    Final(
+                    Str(
                         "StructType",
                     ),
                     [

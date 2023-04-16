@@ -4,18 +4,20 @@ expression: "contents.lines().filter_map(|line|\n                if line != \"\"
 ---
 (struct Hello { x->i32 y->string })
 Ok(
-    Struct {
+    Normal {
         name: "Hello",
         generics: [],
         fields: StructFields(
             [
                 StructField {
+                    attr: None,
                     name: "x",
                     type: Builtin(
                         I32,
                     ),
                 },
                 StructField {
+                    attr: None,
                     name: "y",
                     type: Builtin(
                         String,
@@ -28,7 +30,7 @@ Ok(
 
 (struct Hello :t :x { x->:t y->:x })
 Ok(
-    Struct {
+    Normal {
         name: "Hello",
         generics: [
             Use(
@@ -41,6 +43,7 @@ Ok(
         fields: StructFields(
             [
                 StructField {
+                    attr: None,
                     name: "x",
                     type: Generic(
                         Use(
@@ -49,6 +52,7 @@ Ok(
                     ),
                 },
                 StructField {
+                    attr: None,
                     name: "y",
                     type: Generic(
                         Use(
@@ -63,7 +67,7 @@ Ok(
 
 (struct Hello :t {})
 Ok(
-    Struct {
+    Normal {
         name: "Hello",
         generics: [
             Use(
