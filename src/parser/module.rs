@@ -1,15 +1,15 @@
 use crate::tokenizer::{Keywords, Token};
 
-use super::{
-    defun::Scope, error, file::FileOps, Parser,
-    ParserError, ParserErrorStack,
-};
+use super::{defun::Scope, error, file::FileOps, Parser, ParserError, ParserErrorStack};
 
 #[derive(Debug)]
-pub struct Mod {
-    scope: Scope,
-    name: String,
-    body: Vec<FileOps>,
+pub enum Mod {
+    Full {
+        scope: Scope,
+        name: String,
+        body: Vec<FileOps>,
+    },
+    Header(Scope, String),
 }
 
 impl TryFrom<&mut Parser> for Mod {
@@ -36,7 +36,9 @@ impl TryFrom<&mut Parser> for Mod {
         };
 
         let next = value.pop_front_err("Mod")?;
-        if next != Token::BracketOpen {
+        if next == Token::ParenClose {
+            return Ok(Self::Header(scope, name));
+        } else if next != Token::BracketOpen {
             return Err(error!(
                 "Mod",
                 format!("Expected bracketOpen, got {next:#?}")
@@ -63,21 +65,25 @@ impl TryFrom<&mut Parser> for Mod {
             return Err(error!("Mod", format!("Expected parenClose, got {next:#?}")));
         }
 
-        Ok(Self { scope, name, body })
+        Ok(Self::Full { scope, name, body })
     }
 }
 
 impl ToString for Mod {
     fn to_string(&self) -> String {
-        format!(
-            "{}mod {} {{{}}}",
-            self.scope.to_string(),
-            self.name,
-            self.body
-                .iter()
-                .map(|file_op| file_op.to_string())
-                .collect::<Vec<String>>()
-                .join("\n")
-        )
+        match self {
+            Self::Full { scope, name, body } => {
+                format!(
+                    "{}mod {} {{{}}}",
+                    scope.to_string(),
+                    name,
+                    body.iter()
+                        .map(|file_op| file_op.to_string())
+                        .collect::<Vec<String>>()
+                        .join("\n")
+                )
+            }
+            Self::Header(scope, name) => format!("{}mod {name};", scope.to_string()),
+        }
     }
 }
