@@ -1,13 +1,11 @@
 use either::Either;
 
-use crate::tokenizer::{Keywords, Literals, Token};
+use crate::tokenizer::{Keywords, Token};
 
 use super::{
     error,
-    exp::{Exp, TurboFish},
+    exp::TurboFish,
     file::FileOps,
-    r#type::NamespacedType,
-    range::Range,
     Parser, ParserError, ParserErrorStack,
 };
 

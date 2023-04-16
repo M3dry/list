@@ -1,5 +1,4 @@
 use crate::tokenizer::{Keywords, Token};
-use std::env::*;
 use super::{error, Parser, ParserError, ParserErrorStack};
 
 /// # language example

@@ -1,4 +1,4 @@
-use crate::tokenizer::{Int, Literals, Token};
+use crate::tokenizer::Token;
 
 use super::{error, exp::Exp, Parser, ParserError, ParserErrorStack};
 

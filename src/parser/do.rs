@@ -1,13 +1,10 @@
-use either::Either;
-
-use crate::tokenizer::{Keywords, Literals, Token};
+use crate::tokenizer::{Keywords, Token};
 
 use super::{
     attribute::Attribute,
     error,
     exp::Exp,
     r#type::{NamespacedType, TypeAlias},
-    range::Range,
     Parser, ParserError, ParserErrorStack, r#use::Use,
 };
 

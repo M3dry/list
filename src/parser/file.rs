@@ -1,8 +1,9 @@
 use crate::tokenizer::{Keywords, Token};
 
 use super::{
-    attribute::Attribute, defun::Defun, error, r#enum::Enum, r#struct::Struct, Parser, ParserError,
-    ParserErrorStack, r#use::Use, r#impl::Impl, r#type::TypeAlias, r#trait::Trait,
+    attribute::Attribute, defun::Defun, error, module::Mod, r#enum::Enum, r#impl::Impl,
+    r#struct::Struct, r#trait::Trait, r#type::TypeAlias, r#use::Use, Parser, ParserError,
+    ParserErrorStack,
 };
 
 #[derive(Debug)]
@@ -46,6 +47,7 @@ pub enum FileOps {
     Impl(Impl),
     Trait(Trait),
     TypeAlias(TypeAlias),
+    Mod(Mod),
 }
 
 impl TryFrom<&mut Parser> for FileOps {
@@ -77,7 +79,23 @@ impl TryFrom<&mut Parser> for FileOps {
                     Self::Function(error!(Defun::try_from(&mut *value), "FileOps")?)
                 }
                 Token::Identifier(iden) if &iden[..] == "pub" || &iden[..] == "crate" => {
-                    Self::Function(error!(Defun::try_from(&mut *value), "FileOps")?)
+                    match value
+                        .nth(2)
+                        .ok_or(error!("FileOps", format!("Expected more tokens")))?
+                    {
+                        Token::Keyword(Keywords::Defun) => {
+                            Self::Function(error!(Defun::try_from(&mut *value), "FileOps")?)
+                        }
+                        Token::Keyword(Keywords::Mod) => {
+                            Self::Mod(error!(Mod::try_from(&mut *value), "FileOps")?)
+                        }
+                        token => {
+                            return Err(error!(
+                                "FileOps",
+                                format!("Expected defun or mod keyword, got {token:#?}")
+                            ))
+                        }
+                    }
                 }
                 Token::Keyword(Keywords::Impl) => {
                     Self::Impl(error!(Impl::try_from(&mut *value), "FileOps")?)
@@ -110,6 +128,7 @@ impl ToString for FileOps {
             Self::Impl(r#impl) => r#impl.to_string(),
             Self::Trait(r#trait) => r#trait.to_string(),
             Self::TypeAlias(type_alias) => type_alias.to_string(),
+            Self::Mod(module) => module.to_string(),
         }
     }
 }

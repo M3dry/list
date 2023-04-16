@@ -16,6 +16,7 @@ pub mod r#struct;
 pub mod r#type;
 pub mod r#use;
 pub mod r#trait;
+pub mod module;
 
 use std::{collections::VecDeque, path::PathBuf};
 
@@ -46,6 +47,7 @@ macro_rules! error {
     };
 }
 
+#[allow(unused_macros)]
 macro_rules! snapshot {
     ($name:tt, $func:expr, $path:tt) => {
         snapshot!(
@@ -93,6 +95,7 @@ macro_rules! snapshot {
 }
 
 pub(crate) use error;
+#[allow(unused_imports)]
 pub(crate) use snapshot;
 
 use self::file::File;
@@ -117,6 +120,7 @@ impl std::fmt::Display for ParserError {
 #[derive(Debug)]
 pub(crate) struct ParserErrorStack {
     name: &'static str,
+    #[allow(dead_code)]
     file: &'static str,
     location: (u32, u32),
 }
