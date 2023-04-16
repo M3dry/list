@@ -2,7 +2,7 @@ use crate::tokenizer::{Keywords, Token};
 
 use super::{
     attribute::Attribute, defun::Defun, error, r#enum::Enum, r#struct::Struct, Parser, ParserError,
-    ParserErrorStack, r#use::Use, r#impl::Impl,
+    ParserErrorStack, r#use::Use, r#impl::Impl, r#type::TypeAlias, r#trait::Trait,
 };
 
 #[derive(Debug)]
@@ -44,6 +44,8 @@ pub enum FileOps {
     Function(Defun),
     Attribute(Attribute),
     Impl(Impl),
+    Trait(Trait),
+    TypeAlias(TypeAlias),
 }
 
 impl TryFrom<&mut Parser> for FileOps {
@@ -80,6 +82,12 @@ impl TryFrom<&mut Parser> for FileOps {
                 Token::Keyword(Keywords::Impl) => {
                     Self::Impl(error!(Impl::try_from(&mut *value), "FileOps")?)
                 }
+                Token::Keyword(Keywords::Trait) => {
+                    Self::Trait(error!(Trait::try_from(&mut *value), "FileOps")?)
+                }
+                Token::Keyword(Keywords::Type) => {
+                    Self::TypeAlias(error!(TypeAlias::try_from(&mut *value), "FileOps")?)
+                }
                 token => {
                     return Err(error!(
                         "FileOps",
@@ -100,6 +108,8 @@ impl ToString for FileOps {
             Self::Function(function) => function.to_string(),
             Self::Attribute(attr) => attr.to_string(),
             Self::Impl(r#impl) => r#impl.to_string(),
+            Self::Trait(r#trait) => r#trait.to_string(),
+            Self::TypeAlias(type_alias) => type_alias.to_string(),
         }
     }
 }

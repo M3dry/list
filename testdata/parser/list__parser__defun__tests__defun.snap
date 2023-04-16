@@ -4,7 +4,7 @@ expression: "contents.lines().filter_map(|line|\n                if line != \"\"
 ---
 (defun func (x->i32)->string "hello")
 Ok(
-    Defun {
+    Function {
         scope: File,
         name: "func",
         args: ArgsTyped {
@@ -33,7 +33,7 @@ Ok(
 
 (pub defun func (x->i32 y->i128)->i64 (+ x y))
 Ok(
-    Defun {
+    Function {
         scope: Full,
         name: "func",
         args: ArgsTyped {
@@ -73,7 +73,7 @@ Ok(
 
 (crate defun func (:t x->:t y->:t)->:t x)
 Ok(
-    Defun {
+    Function {
         scope: Crate,
         name: "func",
         args: ArgsTyped {
@@ -116,7 +116,7 @@ Ok(
 
 (defun func ()-><[i32] string> (func))
 Ok(
-    Defun {
+    Function {
         scope: File,
         name: "func",
         args: ArgsTyped {

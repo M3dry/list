@@ -5,12 +5,20 @@ use super::{
 };
 
 #[derive(Debug)]
-pub struct Defun {
-    scope: Scope,
-    name: String,
-    args: ArgsTyped,
-    return_type: Type,
-    body: Exp,
+pub enum Defun {
+    Function {
+        scope: Scope,
+        name: String,
+        args: ArgsTyped,
+        return_type: Type,
+        body: Exp,
+    },
+    Header {
+        scope: Scope,
+        name: String,
+        args: ArgsTyped,
+        return_type: Type,
+    },
 }
 
 impl TryFrom<&mut Parser> for Defun {
@@ -56,14 +64,27 @@ impl TryFrom<&mut Parser> for Defun {
         }
 
         let return_type = error!(Type::try_from(&mut *value), "Defun")?;
+        if value.first() == Some(&Token::ParenClose) {
+            value.pop_front();
+            return Ok(Self::Header {
+                scope,
+                name,
+                args,
+                return_type,
+            });
+        }
+
         let body = error!(Exp::try_from(&mut *value), "Defun")?;
 
         let next = value.pop_front_err("Defun")?;
         if next != Token::ParenClose {
-            return Err(error!("Defun", format!("Expected parenClose, got {next:#?}")))
+            return Err(error!(
+                "Defun",
+                format!("Expected parenClose, got {next:#?}")
+            ));
         }
 
-        Ok(Defun {
+        Ok(Defun::Function {
             scope,
             name,
             args,
@@ -75,19 +96,43 @@ impl TryFrom<&mut Parser> for Defun {
 
 impl ToString for Defun {
     fn to_string(&self) -> String {
-        format!(
-            "{}fn {}{} -> {} {{{}}}",
-            self.scope.to_string(),
-            self.name,
-            self.args.to_string(),
-            self.return_type.to_string(),
-            self.body.to_string()
-        )
+        match self {
+            Self::Function {
+                scope,
+                name,
+                args,
+                return_type,
+                body,
+            } => {
+                format!(
+                    "{}fn {}{} -> {} {{{}}}",
+                    scope.to_string(),
+                    name,
+                    args.to_string(),
+                    return_type.to_string(),
+                    body.to_string()
+                )
+            }
+            Self::Header {
+                scope,
+                name,
+                args,
+                return_type,
+            } => {
+                format!(
+                    "{}fn {}{} -> {};",
+                    scope.to_string(),
+                    name,
+                    args.to_string(),
+                    return_type.to_string(),
+                )
+            }
+        }
     }
 }
 
 #[derive(Debug)]
-enum Scope {
+pub enum Scope {
     File,
     Crate,
     Full,

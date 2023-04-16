@@ -3,7 +3,12 @@ use either::Either;
 use crate::tokenizer::{Keywords, Literals, Token};
 
 use super::{
-    error, exp::Exp, r#type::NamespacedType, range::Range, Parser, ParserError, ParserErrorStack,
+    attribute::Attribute,
+    error,
+    exp::Exp,
+    r#type::{NamespacedType, TypeAlias},
+    range::Range,
+    Parser, ParserError, ParserErrorStack, r#use::Use,
 };
 
 #[derive(Debug)]
@@ -80,6 +85,9 @@ pub enum DoActions {
     ///     (if true break continue))
     Loop(Box<DoActions>),
     While(Exp, Box<DoActions>),
+    TypeAlias(TypeAlias),
+    Attribute(Attribute),
+    Use(Use),
     Ret(Exp),
     Semicolon(Exp),
     Break,
@@ -95,6 +103,9 @@ impl TryFrom<&mut Parser> for DoActions {
                 .first()
                 .ok_or(error!("DoActions", format!("Expected more tokens")))?
             {
+                Token::Char('#') => {
+                    Self::Attribute(error!(Attribute::try_from(&mut *value), "DoActions")?)
+                }
                 Token::Keyword(Keywords::Let) => {
                     value.pop_front();
 
@@ -131,7 +142,7 @@ impl TryFrom<&mut Parser> for DoActions {
 
                         Self::Assignment(var, error!(Exp::try_from(&mut *value), "DoActions")?)
                     } else {
-                        let exp =error!(Exp::try_from(&mut *value), "DoActions")?;
+                        let exp = error!(Exp::try_from(&mut *value), "DoActions")?;
 
                         if let Some(&Token::Char(';')) = value.first() {
                             value.pop_front();
@@ -214,6 +225,12 @@ impl TryFrom<&mut Parser> for DoActions {
 
                     Self::While(cond, body)
                 }
+                Token::Keyword(Keywords::Type) => {
+                    Self::TypeAlias(error!(TypeAlias::try_from(&mut *value), "DoActions")?)
+                }
+                Token::Keyword(Keywords::Use) => {
+                    Self::Use(error!(Use::try_from(&mut *value), "DoActions")?)
+                }
                 Token::Keyword(Keywords::Break) => {
                     value.pop_front();
                     Self::Break
@@ -231,7 +248,7 @@ impl TryFrom<&mut Parser> for DoActions {
                     } else {
                         Self::Ret(exp)
                     }
-                },
+                }
             },
         )
     }
@@ -292,6 +309,9 @@ impl ToString for DoActions {
             Self::While(cond, body) => {
                 format!("while {} {{{}}}", cond.to_string(), body.to_string())
             }
+            Self::TypeAlias(type_alias) => type_alias.to_string(),
+            Self::Attribute(attr) => attr.to_string(),
+            Self::Use(r#use) => r#use.to_string(),
             Self::Ret(action) => action.to_string(),
             Self::Semicolon(exp) => format!("{};", exp.to_string()),
             Self::Break => format!("break;"),

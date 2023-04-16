@@ -142,13 +142,27 @@ impl ToString for ArgsTyped {
     fn to_string(&self) -> String {
         format!(
             "{}({}{})",
-            if !self.generics.is_empty() {
-                format!(
-                    "<{}>",
-                    &self.generics.iter().fold(String::new(), |str, generic| {
-                        format!("{str}, {}", generic.to_string())
-                    })[2..]
-                )
+            if !self.generics.is_empty() || !self.lifetimes.is_empty() {
+                format!("<{}>", {
+                    let lifetimes = self
+                        .lifetimes
+                        .iter()
+                        .map(|lifetime| format!("'{lifetime}"))
+                        .collect::<Vec<String>>()
+                        .join(", ");
+                    let generics = self
+                        .generics
+                        .iter()
+                        .map(|generic| generic.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", ");
+
+                    if lifetimes.is_empty() {
+                        generics
+                    } else {
+                        lifetimes + ", " + &generics
+                    }
+                })
             } else {
                 format!("")
             },

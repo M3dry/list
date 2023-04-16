@@ -303,7 +303,9 @@ impl ToString for NamespacedType {
             Self::Space(name, namespaces) => format!("{name}::{}", namespaces.to_string()),
             Self::Str(name) => format!("{name}"),
             Self::TurboFish(turbofish) => turbofish.to_string(),
-            Self::TurboFishSpace(turbofish, namespaces) => format!("{}::{}", turbofish.to_string(), namespaces.to_string()),
+            Self::TurboFishSpace(turbofish, namespaces) => {
+                format!("{}::{}", turbofish.to_string(), namespaces.to_string())
+            }
         }
     }
 }
@@ -408,5 +410,69 @@ impl ToString for Constraints {
                 })
             }[3..]
         )
+    }
+}
+
+#[derive(Debug)]
+pub enum TypeAlias {
+    Alias { name: String, r#type: Type },
+    Def(String),
+}
+
+impl TryFrom<&mut Parser> for TypeAlias {
+    type Error = ParserError;
+
+    fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
+        let next = value.pop_front_err("TypeALias")?;
+        if next != Token::ParenOpen {
+            return Err(error!(
+                "TypeAlias",
+                format!("Expected parenOpen, got {next:#?}")
+            ));
+        }
+        let next = value.pop_front_err("TypeALias")?;
+        if next != Token::Keyword(Keywords::Type) {
+            return Err(error!(
+                "TypeAlias",
+                format!("Expected type keyword, got {next:#?}")
+            ));
+        }
+
+        let name = match value.pop_front_err("TypeAlias")? {
+            Token::Identifier(iden) => iden,
+            token => {
+                return Err(error!(
+                    "TypeAlias",
+                    format!("Expected iden, got {token:#?}")
+                ))
+            }
+        };
+        if value.first() == Some(&Token::ParenClose) {
+            value.pop_front();
+            return Ok(Self::Def(name))
+        }
+
+        let r#type = error!(Type::try_from(&mut *value), "TypeALias")?;
+
+        let next = value.pop_front_err("TypeALias")?;
+        if next != Token::ParenClose {
+            return Err(error!(
+                "TypeAlias",
+                format!("Expected parenClose, got {next:#?}")
+            ));
+        }
+
+        Ok(Self::Alias { name, r#type })
+    }
+}
+
+impl ToString for TypeAlias {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Alias { name, r#type } => {
+                format!("type {} = {};", name, r#type.to_string())
+            }
+            Self::Def(name) => format!("type {name};")
+        }
     }
 }

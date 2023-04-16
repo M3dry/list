@@ -1,8 +1,9 @@
-use crate::tokenizer::{Keywords, Literals, Token};
+use either::Either;
+
+use crate::tokenizer::{Keywords, Token};
 
 use super::{
-    error, exp::Exp, file::FileOps, r#type::NamespacedType, range::Range, Parser, ParserError,
-    ParserErrorStack,
+    error, exp::TurboFish, file::FileOps, r#type::Generic, Parser, ParserError, ParserErrorStack,
 };
 
 #[derive(Debug)]
@@ -11,9 +12,11 @@ pub enum Impl {
     ///     (defun whatever()->i32 100)
     /// ])
     Trait {
-        r#trait: String,
-        r#for: String,
-        /// Can only be Function, Attribute, Use
+        lifetimes: Vec<String>,
+        generics: Vec<Generic>,
+        r#trait: Either<String, TurboFish>,
+        r#for: Either<String, TurboFish>,
+        /// Can only be Function, Attribute, Use, TypeAlias
         body: Vec<FileOps>,
     },
     /// (impl Type [
@@ -21,8 +24,10 @@ pub enum Impl {
     ///         self/len)
     /// ])
     Funcs {
-        r#for: String,
-        /// Can only be Function, Attribute, Use
+        lifetimes: Vec<String>,
+        generics: Vec<Generic>,
+        r#for: Either<String, TurboFish>,
+        /// Can only be Function, Attribute, Use, TypeAlias
         body: Vec<FileOps>,
     },
 }
@@ -40,81 +45,99 @@ impl TryFrom<&mut Parser> for Impl {
             return Err(error!("Impl", format!("Expected parenOpen, got {next:#?}")));
         }
 
-        let ret = if value.nth(1) == Some(&Token::Keyword(Keywords::LeftArrow)) {
-            let r#trait = match value.pop_front_err("Impl")? {
-                Token::Identifier(iden) => iden,
-                token => return Err(error!("Impl", format!("Expected iden, got {token:#?}"))),
-            };
-            value.pop_front();
-            let r#for = match value.pop_front_err("Impl")? {
-                Token::Identifier(iden) => iden,
-                token => return Err(error!("Impl", format!("Expected iden, got {token:#?}"))),
-            };
-            let next = value.pop_front_err("Impl")?;
-            if next != Token::BracketOpen {
-                return Err(error!(
-                    "Impl",
-                    format!("Expected bracketOpen, got {next:#?}")
-                ));
-            }
+        let mut generics = vec![];
+        let mut lifetimes = vec![];
 
-            let mut file_ops = vec![];
+        loop {
+            let peek = value
+                .first()
+                .ok_or(error!("Impl", format!("Expected more tokens")))?;
 
-            loop {
-                let peek = value
-                    .first()
-                    .ok_or(error!("Imp", format!("Expected more tokens")))?;
-
-                if peek == &Token::BracketClose {
+            match peek {
+                Token::Char(':') => generics.push(error!(Generic::try_from(&mut *value), "Impl")?),
+                Token::BackTick => {
                     value.pop_front();
-                    break Self::Trait {
-                        r#trait,
-                        r#for,
-                        body: file_ops,
-                    };
-                }
-
-                file_ops.push(match error!(FileOps::try_from(&mut *value), "Impl")? {
-                    file @ (FileOps::Use(_) | FileOps::Struct(_) | FileOps::Enum(_)) => {
-                        return Err(error!(
-                            "Impl",
-                            format!("Expected function or attribute, got {file:#?}")
-                        ))
+                    match value.pop_front_err("Impl")? {
+                        Token::Identifier(iden) => lifetimes.push(iden),
+                        token => {
+                            return Err(error!(
+                                "Impl",
+                                format!("Expected identifier, got {token:#?}")
+                            ))
+                        }
                     }
-                    file => file,
-                })
-            }
-        } else {
-            let r#for = match value.pop_front_err("Impl")? {
-                Token::Identifier(iden) => iden,
-                token => return Err(error!("Impl", format!("Expected iden, got {token:#?}"))),
-            };
-            let next = value.pop_front_err("Impl")?;
-            if next != Token::BracketOpen {
-                return Err(error!(
-                    "Impl",
-                    format!("Expected bracketOpen, got {next:#?}")
-                ));
-            }
-
-            let mut file_ops = vec![];
-
-            loop {
-                let peek = value
-                    .first()
-                    .ok_or(error!("Imp", format!("Expected more tokens")))?;
-
-                if peek == &Token::BracketClose {
-                    value.pop_front();
-                    break Self::Funcs {
-                        r#for,
-                        body: file_ops,
-                    };
                 }
+                _ => break,
+            }
+        }
 
-                file_ops.push(error!(FileOps::try_from(&mut *value), "Impl")?)
+        let name = if value.nth(1) == Some(&Token::Keyword(Keywords::TurboStart)) {
+            Either::Right(error!(TurboFish::try_from(&mut *value), "Impl")?)
+        } else {
+            match value.pop_front_err("Impl")? {
+                Token::Identifier(iden) => Either::Left(iden),
+                token => {
+                    return Err(error!(
+                        "Impl",
+                        format!("Expected iden or turbofish, got {token:#?}")
+                    ))
+                }
             }
         };
+
+        let for_trait = if value.first() == Some(&Token::Keyword(Keywords::LeftArrow)) {
+            value.pop_front();
+            let name = if value.nth(1) == Some(&Token::Keyword(Keywords::TurboStart)) {
+                Either::Right(error!(TurboFish::try_from(&mut *value), "Impl")?)
+            } else {
+                match value.pop_front_err("Impl")? {
+                    Token::Identifier(iden) => Either::Left(iden),
+                    token => {
+                        return Err(error!(
+                            "Impl",
+                            format!("Expected iden or turbofish, got {token:#?}")
+                        ))
+                    }
+                }
+            };
+            Some(name)
+        } else {
+            None
+        };
+
+        let next = value.pop_front_err("Impl")?;
+        if next != Token::BracketOpen {
+            return Err(error!(
+                "Impl",
+                format!("Expected bracketOpen, got {next:#?}")
+            ));
+        }
+
+        let mut funcs = vec![];
+
+        loop {
+            let peek = value
+                .first()
+                .ok_or(error!("Impl", format!("Expected more tokens")))?;
+
+            if peek == &Token::BracketClose {
+                value.pop_front();
+                break;
+            }
+
+            funcs.push(match error!(FileOps::try_from(&mut *value), "Impl")? {
+                file @ (FileOps::Use(_)
+                | FileOps::Function(_)
+                | FileOps::TypeAlias(_)
+                | FileOps::Attribute(_)) => file,
+                file => {
+                    return Err(error!(
+                        "Trait",
+                        format!("Expected function, use, type alias or attribute, got {file:#?}")
+                    ))
+                }
+            })
+        }
 
         let next = value.pop_front_err("Impl")?;
         if next != Token::ParenClose {
@@ -124,7 +147,22 @@ impl TryFrom<&mut Parser> for Impl {
             ));
         }
 
-        Ok(ret)
+        Ok(if let Some(r#trait) = for_trait {
+            Self::Trait {
+                lifetimes,
+                generics,
+                r#trait,
+                r#for: name,
+                body: funcs,
+            }
+        } else {
+            Self::Funcs {
+                lifetimes,
+                generics,
+                r#for: name,
+                body: funcs,
+            }
+        })
     }
 }
 
@@ -132,11 +170,43 @@ impl ToString for Impl {
     fn to_string(&self) -> String {
         match self {
             Self::Trait {
+                lifetimes,
+                generics,
                 r#trait,
                 r#for,
                 body,
             } => format!(
-                "impl {trait} for {for} {{{}}}",
+                "impl{} {} for {} {{{}}}",
+                if generics.is_empty() && lifetimes.is_empty() {
+                    format!("")
+                } else {
+                    format!("<{}>", {
+                        let lifetimes = lifetimes
+                            .iter()
+                            .map(|lifetime| format!("'{lifetime}"))
+                            .collect::<Vec<String>>()
+                            .join(", ");
+                        let generics = generics
+                            .iter()
+                            .map(|generic| generic.to_string())
+                            .collect::<Vec<String>>()
+                            .join(", ");
+
+                        if lifetimes.is_empty() {
+                            generics
+                        } else {
+                            lifetimes + ", " + &generics
+                        }
+                    })
+                },
+                match r#trait {
+                    Either::Left(str) => str.to_string(),
+                    Either::Right(turbofish) => turbofish.to_string(),
+                },
+                match r#for {
+                    Either::Left(str) => str.to_string(),
+                    Either::Right(turbofish) => turbofish.to_string(),
+                },
                 &if body.is_empty() {
                     format!("\n")
                 } else {
@@ -145,8 +215,39 @@ impl ToString for Impl {
                     })
                 }[1..]
             ),
-            Self::Funcs { r#for, body } => format!(
-                "impl {for} {{{}}}",
+            Self::Funcs {
+                lifetimes,
+                generics,
+                r#for,
+                body,
+            } => format!(
+                "impl{} {} {{{}}}",
+                if generics.is_empty() && lifetimes.is_empty() {
+                    format!("")
+                } else {
+                    format!("<{}>", {
+                        let lifetimes = lifetimes
+                            .iter()
+                            .map(|lifetime| format!("'{lifetime}"))
+                            .collect::<Vec<String>>()
+                            .join(", ");
+                        let generics = generics
+                            .iter()
+                            .map(|generic| generic.to_string())
+                            .collect::<Vec<String>>()
+                            .join(", ");
+
+                        if lifetimes.is_empty() {
+                            generics
+                        } else {
+                            lifetimes + ", " + &generics
+                        }
+                    })
+                },
+                match r#for {
+                    Either::Left(str) => str.to_string(),
+                    Either::Right(turbofish) => turbofish.to_string(),
+                },
                 &if body.is_empty() {
                     format!("\n")
                 } else {

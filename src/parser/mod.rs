@@ -15,6 +15,7 @@ pub mod range;
 pub mod r#struct;
 pub mod r#type;
 pub mod r#use;
+pub mod r#trait;
 
 use std::{collections::VecDeque, path::PathBuf};
 

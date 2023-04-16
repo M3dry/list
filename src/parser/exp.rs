@@ -110,7 +110,16 @@ impl TryFrom<&mut Parser> for Exp {
                         value.pop_front();
                         value.pop_front();
 
-                        Self::Negation(Box::new(error!(Self::try_from(&mut *value), "Self")?))
+                        let ret = Self::Not(Box::new(error!(Self::try_from(&mut *value), "Self")?));
+                        let next = value.pop_front_err("Exp")?;
+                        if next != Token::ParenClose {
+                            return Err(error!(
+                                "Exp",
+                                format!("Expected parenClose, got {next:#?}")
+                            ));
+                        }
+
+                        ret
                     }
                     Token::Keyword(Keywords::If) => {
                         Self::If(Box::new(error!(If::try_from(&mut *value), "Self")?))

@@ -87,6 +87,7 @@ impl ToString for Literals {
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Keywords {
     TurboStart,
+    Type,
     If,
     Else,
     Elif,
@@ -102,6 +103,7 @@ pub(crate) enum Keywords {
     While,
     Break,
     Impl,
+    Trait,
     As,
     Continue,
     LeftArrow,
@@ -226,6 +228,7 @@ impl FromStr for Tokens {
                 }
                 '\n' => continue,
                 '*' if chars.peek() != Some(&' ') => tokens.push(Token::Keyword(Keywords::Deref)),
+                '`' => tokens.push(Token::BackTick),
                 char if char.is_ascii_digit() => tokens.push(Token::Literal(Literals::Int(Int(
                     false,
                     Int::digs(char.to_digit(10).unwrap() as u128, &mut chars),
@@ -282,7 +285,7 @@ impl FromStr for Tokens {
 
 fn token_from_str(str: &str) -> Vec<Token> {
     match str {
-        "`" => vec![Token::BackTick],
+        "type" => vec![Token::Keyword(Keywords::Type)],
         "if" => vec![Token::Keyword(Keywords::If)],
         "else" => vec![Token::Keyword(Keywords::Else)],
         "elif" => vec![Token::Keyword(Keywords::Elif)],
@@ -298,6 +301,7 @@ fn token_from_str(str: &str) -> Vec<Token> {
         "while" => vec![Token::Keyword(Keywords::While)],
         "break" => vec![Token::Keyword(Keywords::Break)],
         "impl" => vec![Token::Keyword(Keywords::Impl)],
+        "trait" => vec![Token::Keyword(Keywords::Trait)],
         "as" => vec![Token::Keyword(Keywords::As)],
         "continue" => vec![Token::Keyword(Keywords::Continue)],
         "mut" => vec![Token::Keyword(Keywords::Mut)],
