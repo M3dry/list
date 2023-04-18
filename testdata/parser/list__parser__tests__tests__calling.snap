@@ -1,0 +1,218 @@
+---
+source: src/parser/tests.rs
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{}\",\n                                |parser| format!(\"{:#?}\", Exp::try_from (parser))\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+---
+(+ 4 1)
+Ok(
+    Infix(
+        Add(
+            Literal(
+                Int(
+                    Int(
+                        false,
+                        4,
+                    ),
+                ),
+            ),
+            Literal(
+                Int(
+                    Int(
+                        false,
+                        1,
+                    ),
+                ),
+            ),
+        ),
+    ),
+)
+
+(= 10 xy)
+Ok(
+    Infix(
+        Equality(
+            Literal(
+                Int(
+                    Int(
+                        false,
+                        10,
+                    ),
+                ),
+            ),
+            Variable(
+                "xy",
+            ),
+        ),
+    ),
+)
+
+(func 100 (+ 4 10))
+Ok(
+    FuncCall(
+        Variable(
+            "func",
+        ),
+        [
+            Literal(
+                Int(
+                    Int(
+                        false,
+                        100,
+                    ),
+                ),
+            ),
+            Infix(
+                Add(
+                    Literal(
+                        Int(
+                            Int(
+                                false,
+                                4,
+                            ),
+                        ),
+                    ),
+                    Literal(
+                        Int(
+                            Int(
+                                false,
+                                10,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        ],
+    ),
+)
+
+(= (func 69 (+ 1 10)) (func 10 100))
+Ok(
+    Infix(
+        Equality(
+            FuncCall(
+                Variable(
+                    "func",
+                ),
+                [
+                    Literal(
+                        Int(
+                            Int(
+                                false,
+                                69,
+                            ),
+                        ),
+                    ),
+                    Infix(
+                        Add(
+                            Literal(
+                                Int(
+                                    Int(
+                                        false,
+                                        1,
+                                    ),
+                                ),
+                            ),
+                            Literal(
+                                Int(
+                                    Int(
+                                        false,
+                                        10,
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                ],
+            ),
+            FuncCall(
+                Variable(
+                    "func",
+                ),
+                [
+                    Literal(
+                        Int(
+                            Int(
+                                false,
+                                10,
+                            ),
+                        ),
+                    ),
+                    Literal(
+                        Int(
+                            Int(
+                                false,
+                                100,
+                            ),
+                        ),
+                    ),
+                ],
+            ),
+        ),
+    ),
+)
+
+((lambda (x y z) (and (= x y) (= x z))) 10 20 10)
+Ok(
+    FuncCall(
+        Lambda(
+            Lambda {
+                args: Args(
+                    [
+                        "x",
+                        "y",
+                        "z",
+                    ],
+                ),
+                body: Infix(
+                    And(
+                        Infix(
+                            Equality(
+                                Variable(
+                                    "x",
+                                ),
+                                Variable(
+                                    "y",
+                                ),
+                            ),
+                        ),
+                        Infix(
+                            Equality(
+                                Variable(
+                                    "x",
+                                ),
+                                Variable(
+                                    "z",
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            },
+        ),
+        [
+            Literal(
+                Int(
+                    Int(
+                        false,
+                        10,
+                    ),
+                ),
+            ),
+            Literal(
+                Int(
+                    Int(
+                        false,
+                        20,
+                    ),
+                ),
+            ),
+            Literal(
+                Int(
+                    Int(
+                        false,
+                        10,
+                    ),
+                ),
+            ),
+        ],
+    ),
+)

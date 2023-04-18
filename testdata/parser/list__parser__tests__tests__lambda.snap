@@ -1,0 +1,62 @@
+---
+source: src/parser/tests.rs
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{}\",\n                                |parser| format!(\"{:#?}\", Lambda::try_from (parser))\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+---
+(lambda (x y) (+ x y))
+Ok(
+    Lambda {
+        args: Args(
+            [
+                "x",
+                "y",
+            ],
+        ),
+        body: Infix(
+            Add(
+                Variable(
+                    "x",
+                ),
+                Variable(
+                    "y",
+                ),
+            ),
+        ),
+    },
+)
+
+(lambda (x y z) (and (= x y) (= x z)))
+Ok(
+    Lambda {
+        args: Args(
+            [
+                "x",
+                "y",
+                "z",
+            ],
+        ),
+        body: Infix(
+            And(
+                Infix(
+                    Equality(
+                        Variable(
+                            "x",
+                        ),
+                        Variable(
+                            "y",
+                        ),
+                    ),
+                ),
+                Infix(
+                    Equality(
+                        Variable(
+                            "x",
+                        ),
+                        Variable(
+                            "z",
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    },
+)

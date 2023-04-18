@@ -115,12 +115,3 @@ impl ToString for UsePath {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::parser::snapshot;
-
-    snapshot!(test_use, Use::try_from, "use.lt");
-    snapshot!(test_use_rust, Use::try_from, "use.lt", rust);
-}

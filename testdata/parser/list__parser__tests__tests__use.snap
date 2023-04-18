@@ -1,0 +1,60 @@
+---
+source: src/parser/tests.rs
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{}\",\n                                |parser| format!(\"{:#?}\", Use::try_from (parser))\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+---
+(use otherlib)
+Ok(
+    Use(
+        Name(
+            "otherlib",
+        ),
+    ),
+)
+
+(use std->env->*)
+Ok(
+    Use(
+        Path(
+            "std",
+            Path(
+                "env",
+                All,
+            ),
+        ),
+    ),
+)
+
+(use std->(collections->(HashMap HashSet VecDeque) env->args))
+Ok(
+    Use(
+        Path(
+            "std",
+            Multiple(
+                [
+                    Path(
+                        "collections",
+                        Multiple(
+                            [
+                                Name(
+                                    "HashMap",
+                                ),
+                                Name(
+                                    "HashSet",
+                                ),
+                                Name(
+                                    "VecDeque",
+                                ),
+                            ],
+                        ),
+                    ),
+                    Path(
+                        "env",
+                        Name(
+                            "args",
+                        ),
+                    ),
+                ],
+            ),
+        ),
+    ),
+)

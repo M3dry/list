@@ -172,12 +172,3 @@ impl ToString for Scope {
         .to_string()
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::parser::snapshot;
-
-    snapshot!(test_defun, Defun::try_from, "defun.lt");
-    snapshot!(test_defun_rust, Defun::try_from, "defun.lt", rust);
-}

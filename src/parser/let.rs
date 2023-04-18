@@ -104,12 +104,3 @@ impl ToString for Let {
         )
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::parser::snapshot;
-
-    snapshot!(test_let, Let::try_from, "let.lt");
-    snapshot!(test_let_rust, Let::try_from, "let.lt", rust);
-}

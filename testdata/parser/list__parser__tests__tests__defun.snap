@@ -1,0 +1,148 @@
+---
+source: src/parser/tests.rs
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{}\",\n                                |parser| format!(\"{:#?}\", Defun::try_from (parser))\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+---
+(defun func (x->i32)->string "hello")
+Ok(
+    Function {
+        scope: File,
+        name: "func",
+        args: ArgsTyped {
+            lifetimes: [],
+            generics: [],
+            selft: None,
+            args: [
+                (
+                    "x",
+                    Builtin(
+                        I32,
+                    ),
+                ),
+            ],
+        },
+        return_type: Builtin(
+            String,
+        ),
+        body: Literal(
+            String(
+                "hello",
+            ),
+        ),
+    },
+)
+
+(pub defun func (x->i32 y->i128)->i64 (+ x y))
+Ok(
+    Function {
+        scope: Full,
+        name: "func",
+        args: ArgsTyped {
+            lifetimes: [],
+            generics: [],
+            selft: None,
+            args: [
+                (
+                    "x",
+                    Builtin(
+                        I32,
+                    ),
+                ),
+                (
+                    "y",
+                    Builtin(
+                        I128,
+                    ),
+                ),
+            ],
+        },
+        return_type: Builtin(
+            I64,
+        ),
+        body: Infix(
+            Add(
+                Variable(
+                    "x",
+                ),
+                Variable(
+                    "y",
+                ),
+            ),
+        ),
+    },
+)
+
+(crate defun func (:t x->:t y->:t)->:t x)
+Ok(
+    Function {
+        scope: Crate,
+        name: "func",
+        args: ArgsTyped {
+            lifetimes: [],
+            generics: [
+                Use(
+                    "t",
+                ),
+            ],
+            selft: None,
+            args: [
+                (
+                    "x",
+                    Generic(
+                        Use(
+                            "t",
+                        ),
+                    ),
+                ),
+                (
+                    "y",
+                    Generic(
+                        Use(
+                            "t",
+                        ),
+                    ),
+                ),
+            ],
+        },
+        return_type: Generic(
+            Use(
+                "t",
+            ),
+        ),
+        body: Variable(
+            "x",
+        ),
+    },
+)
+
+(defun func ()-><[i32] string> (func))
+Ok(
+    Function {
+        scope: File,
+        name: "func",
+        args: ArgsTyped {
+            lifetimes: [],
+            generics: [],
+            selft: None,
+            args: [],
+        },
+        return_type: Touple(
+            [
+                Array(
+                    Builtin(
+                        I32,
+                    ),
+                    None,
+                ),
+                Builtin(
+                    String,
+                ),
+            ],
+        ),
+        body: FuncCall(
+            Variable(
+                "func",
+            ),
+            [],
+        ),
+    },
+)

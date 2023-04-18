@@ -264,10 +264,7 @@ impl TryFrom<&mut Parser> for Pattern {
                                     let mut fields = vec![];
 
                                     loop {
-                                        let peek = value.first().ok_or(error!(
-                                            "Pattern",
-                                            format!("Expected more tokens")
-                                        ))?;
+                                        let peek = value.first_err("Pattern")?;
                                         if peek == &Token::CurlyClose {
                                             value.pop_front();
                                             let next = value.pop_front_err("Pattern")?;
@@ -317,10 +314,7 @@ impl TryFrom<&mut Parser> for Pattern {
                                     let mut pats = vec![];
 
                                     loop {
-                                        let peek = value.first().ok_or(error!(
-                                            "Pattern",
-                                            format!("Expected more tokens")
-                                        ))?;
+                                        let peek = value.first_err("Pattern")?;
                                         if peek == &Token::ParenClose {
                                             value.pop_front();
                                             break Self::EnumVars(namespace, pats);
@@ -423,13 +417,4 @@ impl ToString for Pattern {
             ),
         }
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::parser::snapshot;
-
-    snapshot!(test_match, Match::try_from, "match.lt");
-    snapshot!(test_match_rust, Match::try_from, "match.lt", rust);
 }

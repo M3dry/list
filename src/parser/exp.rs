@@ -46,7 +46,7 @@ impl TryFrom<&mut Parser> for Exp {
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
         let mut ret = match value
             .first()
-            .ok_or(error!("Self", format!("Expected more tokens")))?
+            .ok_or(error!("Exp", format!("Expected more tokens")))?
         {
             Token::Identifier(_) => match value.nth(1) {
                 Some(&Token::Keyword(Keywords::LeftArrow) | &Token::CurlyOpen) => {
@@ -75,42 +75,42 @@ impl TryFrom<&mut Parser> for Exp {
 
                 if value.first() == Some(&Token::Keyword(Keywords::Mut)) {
                     value.pop_front();
-                    Self::MutRef(Box::new(error!(Self::try_from(&mut *value), "Self")?))
+                    Self::MutRef(Box::new(error!(Self::try_from(&mut *value), "Exp")?))
                 } else {
-                    Self::Ref(Box::new(error!(Self::try_from(&mut *value), "Self")?))
+                    Self::Ref(Box::new(error!(Self::try_from(&mut *value), "Exp")?))
                 }
             }
             Token::Char('-') => {
                 value.pop_front();
 
-                Self::Negation(Box::new(error!(Self::try_from(&mut *value), "Self")?))
+                Self::Negation(Box::new(error!(Self::try_from(&mut *value), "Exp")?))
             }
             Token::Char('+') => {
                 value.pop_front();
 
-                Self::Positive(Box::new(error!(Self::try_from(&mut *value), "Self")?))
+                Self::Positive(Box::new(error!(Self::try_from(&mut *value), "Exp")?))
             }
             Token::Keyword(Keywords::Deref) => {
                 value.pop_front();
 
-                Self::Deref(Box::new(error!(Self::try_from(&mut *value), "Self")?))
+                Self::Deref(Box::new(error!(Self::try_from(&mut *value), "Exp")?))
             }
             Token::AngleBracketOpen => {
-                Self::TypeCreation(error!(TypeCreation::try_from(&mut *value), "Self")?)
+                Self::TypeCreation(error!(TypeCreation::try_from(&mut *value), "Exp")?)
             }
             Token::BracketOpen => {
-                Self::TypeCreation(error!(TypeCreation::try_from(&mut *value), "Self")?)
+                Self::TypeCreation(error!(TypeCreation::try_from(&mut *value), "Exp")?)
             }
             Token::ParenOpen => {
                 match value
                     .nth(1)
-                    .ok_or(error!("Self", format!("Expected more tokens")))?
+                    .ok_or(error!("Exp", format!("Expected more tokens")))?
                 {
                     Token::Keyword(Keywords::Not) => {
                         value.pop_front();
                         value.pop_front();
 
-                        let ret = Self::Not(Box::new(error!(Self::try_from(&mut *value), "Self")?));
+                        let ret = Self::Not(Box::new(error!(Self::try_from(&mut *value), "Exp")?));
                         let next = value.pop_front_err("Exp")?;
                         if next != Token::ParenClose {
                             return Err(error!(
@@ -122,22 +122,22 @@ impl TryFrom<&mut Parser> for Exp {
                         ret
                     }
                     Token::Keyword(Keywords::If) => {
-                        Self::If(Box::new(error!(If::try_from(&mut *value), "Self")?))
+                        Self::If(Box::new(error!(If::try_from(&mut *value), "Exp")?))
                     }
                     Token::Keyword(Keywords::Match) => {
-                        Self::Match(Box::new(error!(Match::try_from(&mut *value), "Self")?))
+                        Self::Match(Box::new(error!(Match::try_from(&mut *value), "Exp")?))
                     }
                     Token::Keyword(Keywords::Let) => {
-                        Self::Let(Box::new(error!(Let::try_from(&mut *value), "Self")?))
+                        Self::Let(Box::new(error!(Let::try_from(&mut *value), "Exp")?))
                     }
                     Token::Keyword(Keywords::Lambda) => {
-                        Self::Lambda(Box::new(error!(Lambda::try_from(&mut *value), "Self")?))
+                        Self::Lambda(Box::new(error!(Lambda::try_from(&mut *value), "Exp")?))
                     }
                     Token::Keyword(Keywords::As) => {
-                        Self::As(Box::new(error!(As::try_from(&mut *value), "Self")?))
+                        Self::As(Box::new(error!(As::try_from(&mut *value), "Exp")?))
                     }
                     Token::Keyword(Keywords::Do) => {
-                        Self::Do(Box::new(error!(Do::try_from(&mut *value), "Self")?))
+                        Self::Do(Box::new(error!(Do::try_from(&mut *value), "Exp")?))
                     }
                     Token::Keyword(Keywords::Return) => {
                         value.pop_front();
@@ -206,10 +206,7 @@ impl TryFrom<&mut Parser> for Exp {
                                             let mut args = vec![];
 
                                             break loop {
-                                                let peek = value.first().ok_or(error!(
-                                                    "Exp",
-                                                    format!("Expected more tokens")
-                                                ))?;
+                                                let peek = value.first_err("Exp")?;
 
                                                 if peek == &Token::ParenClose {
                                                     value.pop_front();
@@ -243,12 +240,12 @@ impl TryFrom<&mut Parser> for Exp {
                             }
                         }
                         Some(&Token::Keyword(Keywords::LeftArrow) | &Token::CurlyOpen) => {
-                            Self::TypeCreation(error!(TypeCreation::try_from(&mut *value), "Self")?)
+                            Self::TypeCreation(error!(TypeCreation::try_from(&mut *value), "Exp")?)
                         }
                         _ => {
                             value.pop_front();
                             let func =
-                                if let Token::Identifier(iden) = value.pop_front_err("Self")? {
+                                if let Token::Identifier(iden) = value.pop_front_err("Exp")? {
                                     iden
                                 } else {
                                     unreachable!()
@@ -256,9 +253,8 @@ impl TryFrom<&mut Parser> for Exp {
                             let mut args = vec![];
 
                             loop {
-                                let peek = value
-                                    .first()
-                                    .ok_or(error!("Self", format!("Expected more tokens")))?;
+                                let peek = value.first_err("Exp")?;
+
 
                                 if peek == &Token::ParenClose {
                                     value.pop_front();
@@ -276,21 +272,19 @@ impl TryFrom<&mut Parser> for Exp {
 
                         if let Ok(infix) = Infix::try_from(&mut *value) {
                             let infix = Self::Infix(Box::new(infix));
-                            let next = value.pop_front_err("Self")?;
+                            let next = value.pop_front_err("Exp")?;
                             if next != Token::ParenClose {
                                 return Err(error!(
-                                    "Self",
+                                    "Exp",
                                     format!("Expected parenClose, got {next:#?}")
                                 ));
                             }
                             return Ok(infix);
                         }
 
-                        let mut exp = error!(Self::try_from(&mut *value), "Self")?;
+                        let mut exp = error!(Self::try_from(&mut *value), "Exp")?;
 
-                        let peek = value
-                            .first()
-                            .ok_or(error!("Self", format!("Expected more tokens")))?;
+                        let peek = value.first_err("Exp")?;
                         if peek == &Token::ParenClose {
                             value.pop_front();
                             exp
@@ -346,10 +340,7 @@ impl TryFrom<&mut Parser> for Exp {
                                             let mut args = vec![];
 
                                             break loop {
-                                                let peek = value.first().ok_or(error!(
-                                                    "Exp",
-                                                    format!("Expected more tokens")
-                                                ))?;
+                                                let peek = value.first_err("Exp")?;
 
                                                 if peek == &Token::ParenClose {
                                                     value.pop_front();
@@ -384,14 +375,14 @@ impl TryFrom<&mut Parser> for Exp {
                             loop {
                                 let peek = value
                                     .first()
-                                    .ok_or(error!("Self", format!("Expected more tokens")))?;
+                                    .ok_or(error!("Exp", format!("Expected more tokens")))?;
 
                                 if peek == &Token::ParenClose {
                                     value.pop_front();
                                     break;
                                 }
 
-                                params.push(error!(Self::try_from(&mut *value), "Self")?)
+                                params.push(error!(Self::try_from(&mut *value), "Exp")?)
                             }
 
                             Self::FuncCall(Box::new(exp), params)
@@ -977,13 +968,4 @@ impl ToString for Infix {
             }
         }
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::parser::snapshot;
-
-    snapshot!(test_calling, Exp::try_from, "calling.lt");
-    snapshot!(test_calling_rust, Exp::try_from, "calling.lt", rust);
 }

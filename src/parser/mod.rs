@@ -11,12 +11,13 @@ pub mod r#impl;
 pub mod lambda;
 pub mod r#let;
 pub mod r#match;
+pub mod module;
 pub mod range;
 pub mod r#struct;
+mod tests;
+pub mod r#trait;
 pub mod r#type;
 pub mod r#use;
-pub mod r#trait;
-pub mod module;
 
 use std::{collections::VecDeque, path::PathBuf};
 
@@ -47,56 +48,7 @@ macro_rules! error {
     };
 }
 
-#[allow(unused_macros)]
-macro_rules! snapshot {
-    ($name:tt, $func:expr, $path:tt) => {
-        snapshot!(
-            $name,
-            |parser| format!("{:#?}", $func(parser)),
-            $path,
-            "../../testdata/parser/"
-        );
-    };
-    ($name:tt, $func:expr, $path:tt, rust) => {
-        snapshot!(
-            $name,
-            |parser| match $func(parser) {
-                Ok(res) => res.to_string(),
-                Err(err) => format!("{err:#?}"),
-            },
-            $path,
-            "../../testdata/rust/"
-        );
-    };
-    ($name:tt, $func:expr, $path:tt, $out:literal) => {
-        #[test]
-        fn $name() {
-            use crate::parser::Parser;
-
-            let contents = include_str!(concat!("../../testdata/input/", $path));
-            let mut settings = insta::Settings::clone_current();
-            settings.set_snapshot_path($out);
-            settings.bind(|| {
-                insta::assert_snapshot!(contents
-                    .lines()
-                    .filter_map(|line| if line != "" {
-                        Some(format!(
-                            "{line}\n{}",
-                            $func(&mut Parser::new(line.parse().unwrap()))
-                        ))
-                    } else {
-                        None
-                    })
-                    .collect::<Vec<String>>()
-                    .join("\n\n"));
-            });
-        }
-    };
-}
-
 pub(crate) use error;
-#[allow(unused_imports)]
-pub(crate) use snapshot;
 
 use self::file::File;
 
@@ -120,14 +72,17 @@ impl std::fmt::Display for ParserError {
 #[derive(Debug)]
 pub(crate) struct ParserErrorStack {
     name: &'static str,
-    #[allow(dead_code)]
     file: &'static str,
     location: (u32, u32),
 }
 
 impl std::fmt::Display for ParserErrorStack {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}({};{})", self.name, self.location.0, self.location.0)
+        write!(
+            f,
+            "{}({}:{};{})",
+            self.name, self.file, self.location.0, self.location.0
+        )
     }
 }
 
@@ -140,6 +95,21 @@ impl Parser {
     pub fn new(tokens: Tokens) -> Self {
         Self {
             tokens: VecDeque::from(tokens.0),
+        }
+    }
+
+    pub fn to_file_str(&mut self) -> String {
+        match File::try_from(self) {
+            Ok(file) => file.to_string(),
+            Err(err) => panic!("{}", err.to_string()),
+        }
+    }
+
+    fn first_err(&self, func: &'static str) -> Result<&Token, ParserError> {
+        if self.tokens.len() > 0 {
+            Ok(self.tokens.index(0))
+        } else {
+            Err(error!(func, format!("Expected more tokens")))
         }
     }
 
@@ -162,7 +132,7 @@ impl Parser {
     fn pop_front_err(&mut self, func: &'static str) -> Result<Token, ParserError> {
         self.tokens
             .pop_front()
-            .ok_or(error!(func, "Expected more tokens".to_string()))
+            .ok_or(error!(func, format!("Expected more tokens")))
     }
 
     fn pop_front(&mut self) -> Option<Token> {
@@ -170,22 +140,17 @@ impl Parser {
     }
 }
 
-pub(crate) fn from_file(path: &PathBuf) -> Result<String, ParserError> {
-    File::try_from(&mut Parser::new(
-        std::fs::read_to_string(&path)
-            .map_err(|err| {
-                error!(
-                    "from_file",
-                    format!("Got an err while opening the file at {path:#?}: {err:#?}")
-                )
-            })?
-            .parse()
-            .map_err(|err| {
-                error!(
-                    "from_file",
-                    format!("Something went wrong while tokenizing file at {path:#?}: {err:#?}")
-                )
-            })?,
-    ))
-    .map(|f| f.to_string())
+pub(crate) fn from_file(path: &PathBuf) -> String {
+    Parser::new(
+        match match std::fs::read_to_string(&path) {
+            Ok(file) => file,
+            Err(err) => panic!("Couldn't open the file at {path:#?}: {err}"),
+        }
+        .parse()
+        {
+            Ok(tokens) => tokens,
+            Err(err) => panic!("Couldn't tokenize file at {path:#?}: {err}"),
+        },
+    )
+    .to_file_str()
 }

@@ -12,7 +12,7 @@ pub fn build_get_files() -> Result<Vec<(String, PathBuf)>, ParserError> {
 
     for path in std::fs::read_dir(&list_dir).unwrap() {
         let mut path = path.unwrap().path();
-        let file = from_file(&path)?;
+        let file = from_file(&path);
         path.set_extension("rs");
         path = PathBuf::from(
             out_dir.to_string()

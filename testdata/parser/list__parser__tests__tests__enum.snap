@@ -1,0 +1,90 @@
+---
+source: src/parser/tests.rs
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{}\",\n                                |parser| format!(\"{:#?}\", Enum::try_from (parser))\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+---
+(enum Hello Xy)
+Ok(
+    Enum {
+        name: "Hello",
+        generics: [],
+        variants: [
+            Simple(
+                "Xy",
+            ),
+        ],
+    },
+)
+
+(enum Hello (Xy))
+Ok(
+    Enum {
+        name: "Hello",
+        generics: [],
+        variants: [
+            Simple(
+                "Xy",
+            ),
+        ],
+    },
+)
+
+(enum Hello :t (Xy) (Xz { x->:t y->i32 }) (Xx i32 <i32 [string]>))
+Ok(
+    Enum {
+        name: "Hello",
+        generics: [
+            Use(
+                "t",
+            ),
+        ],
+        variants: [
+            Simple(
+                "Xy",
+            ),
+            Struct(
+                "Xz",
+                StructFields(
+                    [
+                        StructField {
+                            attr: None,
+                            name: "x",
+                            type: Generic(
+                                Use(
+                                    "t",
+                                ),
+                            ),
+                        },
+                        StructField {
+                            attr: None,
+                            name: "y",
+                            type: Builtin(
+                                I32,
+                            ),
+                        },
+                    ],
+                ),
+            ),
+            WithType(
+                "Xx",
+                [
+                    Builtin(
+                        I32,
+                    ),
+                    Touple(
+                        [
+                            Builtin(
+                                I32,
+                            ),
+                            Array(
+                                Builtin(
+                                    String,
+                                ),
+                                None,
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+        ],
+    },
+)

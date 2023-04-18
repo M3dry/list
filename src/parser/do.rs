@@ -344,7 +344,7 @@ impl TryFrom<&mut Parser> for Destructuring {
                 value.pop_front();
 
                 loop {
-                    let peek = value.first().ok_or(error!("LetMatch", format!("Expected more tokens")))?;
+                    let peek = value.first_err("LetMatch")?;
                     match peek {
                         Token::CurlyClose => {
                             value.pop_front();

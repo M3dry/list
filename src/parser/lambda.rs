@@ -48,12 +48,3 @@ impl ToString for Lambda {
         format!("{} {}", self.args.to_string(), self.body.to_string())
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::parser::snapshot;
-
-    snapshot!(test_lambda, Lambda::try_from, "lambda.lt");
-    snapshot!(test_lambda_rust, Lambda::try_from, "lambda.lt", rust);
-}

@@ -1,0 +1,12 @@
+---
+source: src/parser/tests.rs
+expression: "contents.lines().filter_map(|line|\n                if line != \"\" {\n                        Some(format!(\"{line}\\n{}\",\n                                |parser|\n    match Struct::try_from(parser) {\n        Ok(res) => res.to_string(),\n        Err(err) => format!(\"{err:#?}\"),\n    }\n                                (& mut Parser :: new(line.parse().unwrap()))))\n                    } else { None }).collect::<Vec<String>>().join(\"\\n\\n\")"
+---
+(struct Hello { x->i32 y->string })
+struct Hello {x: i32, y: String}
+
+(struct Hello :t :x { x->:t y->:x })
+struct Hello<t, x> {x: t, y: x}
+
+(struct Hello :t {})
+struct Hello<t> {}

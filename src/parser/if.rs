@@ -70,12 +70,3 @@ impl ToString for If {
         )
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::parser::snapshot;
-
-    snapshot!(test_if, If::try_from, "if.lt");
-    snapshot!(test_if_rust, If::try_from, "if.lt", rust);
-}

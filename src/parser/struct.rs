@@ -275,12 +275,3 @@ impl ToString for StructField {
         )
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::parser::snapshot;
-
-    snapshot!(test_struct, Struct::try_from, "struct.lt");
-    snapshot!(test_struct_rust, Struct::try_from, "struct.lt", rust);
-}

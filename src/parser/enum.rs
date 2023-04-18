@@ -192,12 +192,3 @@ impl ToString for Variant {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::parser::snapshot;
-
-    snapshot!(test_enum, Enum::try_from, "enum.lt");
-    snapshot!(test_enum_rust, Enum::try_from, "enum.lt", rust);
-}
