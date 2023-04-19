@@ -1,0 +1,62 @@
+(use rand->(thread_rng seq->SliceRandom))
+(use clap->Parser)
+
+#[(derive Parser Debug)]
+#[(command author version about (= long_about None))]
+(struct Args {
+    #[(arg short long)]
+    length->u64
+    #[(arg (= short 'c'))]
+    letters->bool
+    #[(arg (= short 'C'))]
+    capital->bool
+    #[(arg short)]
+    numbers->bool
+    #[(arg short)]
+    special_chars->bool
+    #[(arg short)]
+    all->bool
+})
+
+#[(derive Debug)]
+(struct PassGenerator { chars->(Vec u8) length->u64 })
+
+(impl PassGenerator [
+    (pub defun new(args->&Args)->Self
+        (Self {
+            length->args/length
+            chars->(Self->chars &args)
+        }))
+
+    (pub defun password(&self)->string
+        (((0..self/length).map
+            (lambda (_)
+                (as
+                    (((*self/chars).choose &mut (thread_rng)) .unwrap)
+                    char)))
+            .collect<string>))
+
+    (defun chars(args->&Args)->(Vec u8)
+        (let ((letters "qwertyuiopasdfghjklzxcvbnm")
+              (capital "QWERTYUIOPASDFGHJKLZXCVBNM")
+              (numbers "1234567890")
+              (special "[];',./{}:\"<>?|/*-+_=!@#$%^&()`~"))
+            ((if args/all
+                (+ (+ (+ (letters.to_string) capital) numbers) special)
+            else (do
+                let mut buf <- (String->new)
+                if (not args/letters)
+                    buf <- (+ buf letters)
+                if args/capital
+                    buf <- (+ buf capital)
+                if args/numbers
+                    buf <- (+ buf numbers)
+                if args/special_chars
+                    buf <- (+ buf special)
+                buf))
+            .into_bytes)))
+])
+
+(defun main()-><>
+    (let (args (Args->parse))
+        (println! "{}" (&(PassGenerator->new &args).password))))
