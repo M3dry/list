@@ -15,22 +15,12 @@ impl TryFrom<&mut Parser> for Do {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Do")?;
-        if next != Token::ParenOpen {
-            return Err(error!("Do", format!("Expected parenOpen, got {next:#?}")));
-        }
-
-        let next = value.pop_front_err("Do")?;
-        if next != Token::Keyword(Keywords::Do) {
-            return Err(error!("Do", format!("Expected parenOpen, got {next:#?}")));
-        }
-
+        let _ = error!("Do", value.pop_front(), [Token::ParenOpen])?;
+        let _ = error!("Do", value.pop_front(), [Token::Keyword(Keywords::Do)])?;
         let mut actions = vec![];
 
         loop {
-            let peek = value
-                .first()
-                .ok_or(error!("Do", format!("Expected more tokens")))?;
+            let peek = value.first_err("Do")?;
 
             if peek == &Token::ParenClose {
                 value.pop_front();
@@ -96,9 +86,7 @@ impl TryFrom<&mut Parser> for DoActions {
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
         Ok(
-            match value
-                .first()
-                .ok_or(error!("DoActions", format!("Expected more tokens")))?
+            match value.first_err("DoActions")?
             {
                 Token::Char('#') => {
                     Self::Attribute(error!(Attribute::try_from(&mut *value), "DoActions")?)
@@ -114,13 +102,7 @@ impl TryFrom<&mut Parser> for DoActions {
                     };
 
                     let pattern = error!(Destructuring::try_from(&mut *value), "DoActions")?;
-                    let next = value.pop_front_err("DoActions")?;
-                    if next != Token::Keyword(Keywords::RightArrow) {
-                        return Err(error!(
-                            "DoActions",
-                            format!("Expected rightArrow, got {next:#?}")
-                        ));
-                    }
+                    let _ = error!("DoActions", value.pop_front(), [Token::Keyword(Keywords::RightArrow)])?;
 
                     Self::Let(
                         mutable,
@@ -194,15 +176,7 @@ impl TryFrom<&mut Parser> for DoActions {
                 Token::Keyword(Keywords::For) => {
                     value.pop_front();
                     let vals = error!(Destructuring::try_from(&mut *value), "DoActions")?;
-
-                    let next = value.pop_front_err("DoActions")?;
-                    if next != Token::Keyword(Keywords::RightArrow) {
-                        return Err(error!(
-                            "DoActions",
-                            format!("Expected rightArrow, got {next:#?}")
-                        ));
-                    }
-
+                    let _ = error!("DoActions", value.pop_front(), [Token::Keyword(Keywords::RightArrow)])?;
                     let iter = error!(Exp::try_from(&mut *value), "DoActions")?;
                     let body = Box::new(error!(DoActions::try_from(&mut *value), "DoActions")?);
 
@@ -330,8 +304,7 @@ impl TryFrom<&mut Parser> for Destructuring {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("LetMatch")?;
-        Ok(match next {
+        Ok(match error!("LetMatch", value.pop_front(), [Token::Identifier(_), Token::AngleBracketOpen, Token::BracketOpen, Token::DoubleDot, Token::ParenOpen])? {
             iden @ Token::Identifier(_)
                 if matches!(
                     value.first(),
@@ -359,9 +332,7 @@ impl TryFrom<&mut Parser> for Destructuring {
                 let mut matches = vec![];
 
                 loop {
-                    let peek = value
-                        .first()
-                        .ok_or(error!("LetMatch", format!("Expected more tokens")))?;
+                    let peek = value.first_err("LetMatch")?;
 
                     if peek == &Token::AngleBracketClose {
                         value.pop_front();
@@ -375,9 +346,7 @@ impl TryFrom<&mut Parser> for Destructuring {
                 let mut matches = vec![];
 
                 loop {
-                    let peek = value
-                        .first()
-                        .ok_or(error!("LetMatch", format!("Expected more tokens")))?;
+                    let peek = value.first_err("LetMatch")?;
 
                     if peek == &Token::BracketClose {
                         value.pop_front();
@@ -390,18 +359,11 @@ impl TryFrom<&mut Parser> for Destructuring {
             Token::DoubleDot => Self::Rest,
             Token::ParenOpen => {
                 let ret = error!(Destructuring::try_from(&mut *value), "LetMatch")?;
-
-                let next = value.pop_front_err("LetMatch")?;
-                if next != Token::ParenClose {
-                    return Err(error!(
-                        "LetMatch",
-                        format!("Expected parenClose got {next:#?}")
-                    ));
-                }
+                let _ = error!("LetMatch", value.pop_front(), [Token::ParenClose])?;
 
                 ret
             }
-            token => return Err(error!("LetMatch", format!("Expected doubleDot, parenOpen, bracketOpen, angleBracketOpen, identifier, got {token:#?}"))),
+            _ => unreachable!()
         })
     }
 }
@@ -457,7 +419,7 @@ impl TryFrom<&mut Parser> for LetStructField {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("LetStructField")?;
+        let next = error!("LetStructField", value.pop_front(), [Token::DoubleDot, Token::Identifier(_)])?;
         Ok(match next {
             Token::DoubleDot => Self::Rest,
             Token::Identifier(name)
@@ -473,12 +435,7 @@ impl TryFrom<&mut Parser> for LetStructField {
                 )
             }
             Token::Identifier(iden) => Self::Simple(iden),
-            token => {
-                return Err(error!(
-                    "LetStructField",
-                    format!("Expected iden or doubleDot, got {token:#?}")
-                ))
-            }
+            _ => unreachable!()
         })
     }
 }

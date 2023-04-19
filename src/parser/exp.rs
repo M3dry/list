@@ -10,7 +10,7 @@ use super::{
     r#match::Match,
     r#type::{NamespacedType, Type},
     range::Range,
-    Parser, ParserError, ParserErrorStack,
+    Error, Parser, ParserError, ParserErrorStack,
 };
 
 #[derive(Debug)]
@@ -44,10 +44,21 @@ impl TryFrom<&mut Parser> for Exp {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let mut ret = match value
-            .first()
-            .ok_or(error!("Exp", format!("Expected more tokens")))?
-        {
+        let mut ret = match error!(
+            "Exp",
+            value.first(),
+            [
+                Token::Identifier(_),
+                Token::Literal(_),
+                Token::Ref,
+                Token::Char('-'),
+                Token::Char('+'),
+                Token::Keyword(Keywords::Deref),
+                Token::AngleBracketOpen,
+                Token::BracketOpen,
+                Token::ParenOpen
+            ]
+        )? {
             Token::Identifier(_) => match value.nth(1) {
                 Some(&Token::Keyword(Keywords::LeftArrow) | &Token::CurlyOpen) => {
                     Self::TypeCreation(error!(TypeCreation::try_from(&mut *value), "Exp")?)
@@ -101,296 +112,254 @@ impl TryFrom<&mut Parser> for Exp {
             Token::BracketOpen => {
                 Self::TypeCreation(error!(TypeCreation::try_from(&mut *value), "Exp")?)
             }
-            Token::ParenOpen => {
-                match value
-                    .nth(1)
-                    .ok_or(error!("Exp", format!("Expected more tokens")))?
-                {
-                    Token::Keyword(Keywords::Not) => {
-                        value.pop_front();
-                        value.pop_front();
+            Token::ParenOpen => match value.nth_err(1, "Exp")? {
+                Token::Keyword(Keywords::Not) => {
+                    value.pop_front();
+                    value.pop_front();
 
-                        let ret = Self::Not(Box::new(error!(Self::try_from(&mut *value), "Exp")?));
-                        let next = value.pop_front_err("Exp")?;
-                        if next != Token::ParenClose {
-                            return Err(error!(
+                    let ret = Self::Not(Box::new(error!(Self::try_from(&mut *value), "Exp")?));
+                    let _ = error!("Exp", value.pop_front(), [Token::ParenClose])?;
+
+                    ret
+                }
+                Token::Keyword(Keywords::If) => {
+                    Self::If(Box::new(error!(If::try_from(&mut *value), "Exp")?))
+                }
+                Token::Keyword(Keywords::Match) => {
+                    Self::Match(Box::new(error!(Match::try_from(&mut *value), "Exp")?))
+                }
+                Token::Keyword(Keywords::Let) => {
+                    Self::Let(Box::new(error!(Let::try_from(&mut *value), "Exp")?))
+                }
+                Token::Keyword(Keywords::Lambda) => {
+                    Self::Lambda(Box::new(error!(Lambda::try_from(&mut *value), "Exp")?))
+                }
+                Token::Keyword(Keywords::As) => {
+                    Self::As(Box::new(error!(As::try_from(&mut *value), "Exp")?))
+                }
+                Token::Keyword(Keywords::Do) => {
+                    Self::Do(Box::new(error!(Do::try_from(&mut *value), "Exp")?))
+                }
+                Token::Keyword(Keywords::Return) => {
+                    value.pop_front();
+                    value.pop_front();
+
+                    Self::Return(Box::new(error!(Exp::try_from(&mut *value), "Exp")?))
+                }
+                Token::Identifier(_) => match value.nth(2) {
+                    Some(&Token::Slash | &Token::Char('.')) => {
+                        value.pop_front();
+                        let mut exp = if let Token::Identifier(iden) = value.pop_front().unwrap() {
+                            Self::Variable(iden)
+                        } else {
+                            unreachable!()
+                        };
+
+                        loop {
+                            exp = match error!(
                                 "Exp",
-                                format!("Expected parenClose, got {next:#?}")
-                            ));
-                        }
-
-                        ret
-                    }
-                    Token::Keyword(Keywords::If) => {
-                        Self::If(Box::new(error!(If::try_from(&mut *value), "Exp")?))
-                    }
-                    Token::Keyword(Keywords::Match) => {
-                        Self::Match(Box::new(error!(Match::try_from(&mut *value), "Exp")?))
-                    }
-                    Token::Keyword(Keywords::Let) => {
-                        Self::Let(Box::new(error!(Let::try_from(&mut *value), "Exp")?))
-                    }
-                    Token::Keyword(Keywords::Lambda) => {
-                        Self::Lambda(Box::new(error!(Lambda::try_from(&mut *value), "Exp")?))
-                    }
-                    Token::Keyword(Keywords::As) => {
-                        Self::As(Box::new(error!(As::try_from(&mut *value), "Exp")?))
-                    }
-                    Token::Keyword(Keywords::Do) => {
-                        Self::Do(Box::new(error!(Do::try_from(&mut *value), "Exp")?))
-                    }
-                    Token::Keyword(Keywords::Return) => {
-                        value.pop_front();
-                        value.pop_front();
-
-                        Self::Return(Box::new(error!(Exp::try_from(&mut *value), "Exp")?))
-                    }
-                    Token::Identifier(_) => match value.nth(2) {
-                        Some(&Token::Slash | &Token::Char('.')) => {
-                            value.pop_front();
-                            let mut exp =
-                                if let Token::Identifier(iden) = value.pop_front_err("Exp")? {
-                                    Self::Variable(iden)
-                                } else {
-                                    unreachable!()
-                                };
-
-                            loop {
-                                exp = match value.first() {
-                                    Some(&Token::Slash) => {
-                                        value.pop_front();
-                                        Self::Field(
-                                            Box::new(exp),
-                                            match value.pop_front_err("Exp")? {
-                                                Token::Identifier(iden) => iden,
-                                                token => {
-                                                    return Err(error!(
-                                                        "Exp",
-                                                        format!("Expected iden, got {token:#?}")
-                                                    ))
-                                                }
-                                            },
-                                        )
-                                    }
-                                    Some(&Token::Char('.')) => {
-                                        value.pop_front();
-                                        let method = if value.nth(1)
-                                            == Some(&Token::Keyword(Keywords::TurboStart))
-                                        {
-                                            Self::TurboFish(error!(
-                                                TurboFish::try_from(&mut *value),
-                                                "Exp"
-                                            )?)
-                                        } else {
-                                            match value.pop_front_err("Exp")? {
-                                                Token::Identifier(iden) => Self::Variable(iden),
-                                                token => {
-                                                    return Err(error!(
-                                                        "Exp",
-                                                        format!("Expected iden, got {token:#?}")
-                                                    ))
-                                                }
-                                            }
-                                        };
-
-                                        if matches!(
-                                            value.first(),
-                                            Some(&Token::Slash | &Token::Char('.'))
-                                        ) {
-                                            Self::MethodCall(
-                                                Box::new(exp),
-                                                Box::new(method),
-                                                vec![],
-                                            )
-                                        } else {
-                                            let mut args = vec![];
-
-                                            break loop {
-                                                let peek = value.first_err("Exp")?;
-
-                                                if peek == &Token::ParenClose {
-                                                    value.pop_front();
-                                                    break Self::MethodCall(
-                                                        Box::new(exp),
-                                                        Box::new(method),
-                                                        args,
-                                                    );
-                                                }
-
-                                                args.push(error!(
-                                                    Exp::try_from(&mut *value),
-                                                    "Exp"
-                                                )?)
-                                            };
-                                        }
-                                    }
-                                    Some(&Token::ParenClose) => {
-                                        value.pop_front();
-                                        break exp;
-                                    }
-                                    token => {
-                                        return Err(error!(
-                                            "Exp",
-                                            format!(
-                                                "Expected slash, . or parenClose, got {token:#?}"
-                                            )
-                                        ))
-                                    }
-                                }
-                            }
-                        }
-                        Some(&Token::Keyword(Keywords::LeftArrow) | &Token::CurlyOpen) => {
-                            Self::TypeCreation(error!(TypeCreation::try_from(&mut *value), "Exp")?)
-                        }
-                        _ => {
-                            value.pop_front();
-                            let func =
-                                if let Token::Identifier(iden) = value.pop_front_err("Exp")? {
-                                    iden
-                                } else {
-                                    unreachable!()
-                                };
-                            let mut args = vec![];
-
-                            loop {
-                                let peek = value.first_err("Exp")?;
-
-
-                                if peek == &Token::ParenClose {
+                                value.first(),
+                                [Token::Slash, Token::Char('.'), Token::ParenClose]
+                            )? {
+                                Token::Slash => {
                                     value.pop_front();
-                                    break;
+                                    Self::Field(
+                                        Box::new(exp),
+                                        match error!(
+                                            "Exp",
+                                            value.pop_front(),
+                                            [Token::Identifier(_)]
+                                        )? {
+                                            Token::Identifier(iden) => iden,
+                                            _ => unreachable!(),
+                                        },
+                                    )
                                 }
+                                Token::Char('.') => {
+                                    value.pop_front();
+                                    let method = if value.nth(1)
+                                        == Some(&Token::Keyword(Keywords::TurboStart))
+                                    {
+                                        Self::TurboFish(error!(
+                                            TurboFish::try_from(&mut *value),
+                                            "Exp"
+                                        )?)
+                                    } else {
+                                        match error!(
+                                            "Exp",
+                                            value.pop_front(),
+                                            [Token::Identifier(_)]
+                                        )? {
+                                            Token::Identifier(iden) => Self::Variable(iden),
+                                            _ => unreachable!(),
+                                        }
+                                    };
 
-                                args.push(error!(Self::try_from(&mut *value), "exp")?)
+                                    if matches!(
+                                        value.first(),
+                                        Some(&Token::Slash | &Token::Char('.'))
+                                    ) {
+                                        Self::MethodCall(Box::new(exp), Box::new(method), vec![])
+                                    } else {
+                                        let mut args = vec![];
+
+                                        break loop {
+                                            let peek = value.first_err("Exp")?;
+
+                                            if peek == &Token::ParenClose {
+                                                value.pop_front();
+                                                break Self::MethodCall(
+                                                    Box::new(exp),
+                                                    Box::new(method),
+                                                    args,
+                                                );
+                                            }
+
+                                            args.push(error!(Exp::try_from(&mut *value), "Exp")?)
+                                        };
+                                    }
+                                }
+                                Token::ParenClose => {
+                                    value.pop_front();
+                                    break exp;
+                                }
+                                _ => unreachable!(),
                             }
-
-                            Self::FuncCall(Box::new(Self::Variable(func)), args)
                         }
-                    },
+                    }
+                    Some(&Token::Keyword(Keywords::LeftArrow) | &Token::CurlyOpen) => {
+                        Self::TypeCreation(error!(TypeCreation::try_from(&mut *value), "Exp")?)
+                    }
                     _ => {
                         value.pop_front();
-
-                        if let Ok(infix) = Infix::try_from(&mut *value) {
-                            let infix = Self::Infix(Box::new(infix));
-                            let next = value.pop_front_err("Exp")?;
-                            if next != Token::ParenClose {
-                                return Err(error!(
-                                    "Exp",
-                                    format!("Expected parenClose, got {next:#?}")
-                                ));
-                            }
-                            return Ok(infix);
-                        }
-
-                        let mut exp = error!(Self::try_from(&mut *value), "Exp")?;
-
-                        let peek = value.first_err("Exp")?;
-                        if peek == &Token::ParenClose {
-                            value.pop_front();
-                            exp
-                        } else if peek == &Token::Char('.') {
-                            loop {
-                                exp = match value.first() {
-                                    Some(&Token::Slash) => {
-                                        value.pop_front();
-                                        Self::Field(
-                                            Box::new(exp),
-                                            match value.pop_front_err("Exp")? {
-                                                Token::Identifier(iden) => iden,
-                                                token => {
-                                                    return Err(error!(
-                                                        "Exp",
-                                                        format!("Expected iden, got {token:#?}")
-                                                    ))
-                                                }
-                                            },
-                                        )
-                                    }
-                                    Some(&Token::Char('.')) => {
-                                        value.pop_front();
-                                        let method = if value.nth(1)
-                                            == Some(&Token::Keyword(Keywords::TurboStart))
-                                        {
-                                            Self::TurboFish(error!(
-                                                TurboFish::try_from(&mut *value),
-                                                "Exp"
-                                            )?)
-                                        } else {
-                                            match value.pop_front_err("Exp")? {
-                                                Token::Identifier(iden) => Self::Variable(iden),
-                                                token => {
-                                                    return Err(error!(
-                                                        "Exp",
-                                                        format!("Expected iden, got {token:#?}")
-                                                    ))
-                                                }
-                                            }
-                                        };
-
-                                        if matches!(
-                                            value.first(),
-                                            Some(&Token::Slash | &Token::Char('.'))
-                                        ) {
-                                            Self::MethodCall(
-                                                Box::new(exp),
-                                                Box::new(method),
-                                                vec![],
-                                            )
-                                        } else {
-                                            let mut args = vec![];
-
-                                            break loop {
-                                                let peek = value.first_err("Exp")?;
-
-                                                if peek == &Token::ParenClose {
-                                                    value.pop_front();
-                                                    break Self::MethodCall(
-                                                        Box::new(exp),
-                                                        Box::new(method),
-                                                        args,
-                                                    );
-                                                }
-
-                                                args.push(error!(
-                                                    Exp::try_from(&mut *value),
-                                                    "Exp"
-                                                )?)
-                                            };
-                                        }
-                                    }
-                                    Some(&Token::ParenClose) => break exp,
-                                    token => {
-                                        return Err(error!(
-                                            "Exp",
-                                            format!(
-                                                "Expected slash, . or parenClose, got {token:#?}"
-                                            )
-                                        ))
-                                    }
-                                }
-                            }
+                        let func = if let Token::Identifier(iden) = value.pop_front().unwrap() {
+                            iden
                         } else {
-                            let mut params = vec![];
+                            unreachable!()
+                        };
+                        let mut args = vec![];
 
-                            loop {
-                                let peek = value
-                                    .first()
-                                    .ok_or(error!("Exp", format!("Expected more tokens")))?;
+                        loop {
+                            let peek = value.first_err("Exp")?;
 
-                                if peek == &Token::ParenClose {
-                                    value.pop_front();
-                                    break;
-                                }
-
-                                params.push(error!(Self::try_from(&mut *value), "Exp")?)
+                            if peek == &Token::ParenClose {
+                                value.pop_front();
+                                break;
                             }
 
-                            Self::FuncCall(Box::new(exp), params)
+                            args.push(error!(Self::try_from(&mut *value), "exp")?)
                         }
+
+                        Self::FuncCall(Box::new(Self::Variable(func)), args)
+                    }
+                },
+                _ => {
+                    value.pop_front();
+
+                    if let Ok(infix) = Infix::try_from(&mut *value) {
+                        let infix = Self::Infix(Box::new(infix));
+                        let _ = error!("Exp", value.pop_front(), [Token::ParenClose])?;
+
+                        return Ok(infix);
+                    }
+
+                    let mut exp = error!(Self::try_from(&mut *value), "Exp")?;
+
+                    let peek = value.first_err("Exp")?;
+                    if peek == &Token::ParenClose {
+                        value.pop_front();
+                        exp
+                    } else if peek == &Token::Char('.') {
+                        loop {
+                            exp = match error!(
+                                "Exp",
+                                value.first(),
+                                [Token::Slash, Token::Char('.'), Token::ParenClose]
+                            )? {
+                                Token::Slash => {
+                                    value.pop_front();
+                                    Self::Field(
+                                        Box::new(exp),
+                                        match error!(
+                                            "Exp",
+                                            value.pop_front(),
+                                            [Token::Identifier(_)]
+                                        )? {
+                                            Token::Identifier(iden) => iden,
+                                            _ => unreachable!(),
+                                        },
+                                    )
+                                }
+                                Token::Char('.') => {
+                                    value.pop_front();
+                                    let method = if value.nth(1)
+                                        == Some(&Token::Keyword(Keywords::TurboStart))
+                                    {
+                                        Self::TurboFish(error!(
+                                            TurboFish::try_from(&mut *value),
+                                            "Exp"
+                                        )?)
+                                    } else {
+                                        match error!(
+                                            "Exp",
+                                            value.pop_front(),
+                                            [Token::Identifier(_)]
+                                        )? {
+                                            Token::Identifier(iden) => Self::Variable(iden),
+                                            _ => unreachable!(),
+                                        }
+                                    };
+
+                                    if matches!(
+                                        value.first(),
+                                        Some(&Token::Slash | &Token::Char('.'))
+                                    ) {
+                                        Self::MethodCall(Box::new(exp), Box::new(method), vec![])
+                                    } else {
+                                        let mut args = vec![];
+
+                                        break loop {
+                                            let peek = value.first_err("Exp")?;
+
+                                            if peek == &Token::ParenClose {
+                                                value.pop_front();
+                                                break Self::MethodCall(
+                                                    Box::new(exp),
+                                                    Box::new(method),
+                                                    args,
+                                                );
+                                            }
+
+                                            args.push(error!(Exp::try_from(&mut *value), "Exp")?)
+                                        };
+                                    }
+                                }
+                                Token::ParenClose => {
+                                    value.pop_front();
+                                    break exp;
+                                }
+                                _ => unreachable!(),
+                            }
+                        }
+                    } else {
+                        let mut params = vec![];
+
+                        loop {
+                            let peek = value.first_err("Exp")?;
+
+                            if peek == &Token::ParenClose {
+                                value.pop_front();
+                                break;
+                            }
+
+                            params.push(error!(Self::try_from(&mut *value), "Exp")?)
+                        }
+
+                        Self::FuncCall(Box::new(exp), params)
                     }
                 }
-            }
-            token => return Err(error!("Exp", format!("Didn't expected this: {token:#?}"))),
+            },
+            _ => unreachable!(),
         };
 
         loop {
@@ -425,11 +394,9 @@ impl TryFrom<&mut Parser> for Exp {
                 }
                 Some(&Token::Slash) => {
                     value.pop_front();
-                    let field = match value.pop_front_err("Exp")? {
+                    let field = match error!("Exp", value.pop_front(), [Token::Identifier(_)])? {
                         Token::Identifier(iden) => iden,
-                        token => {
-                            return Err(error!("Exp", format!("Expected iden, got {token:#?}")))
-                        }
+                        _ => unreachable!(),
                     };
 
                     Self::Field(Box::new(ret), field)
@@ -506,9 +473,7 @@ impl TryFrom<&mut Parser> for TypeCreation {
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
         let mut paren = false;
-        let peek = value
-            .first()
-            .ok_or(error!("TypeCreation", format!("Expected more tokens")))?;
+        let peek = value.first_err("TypeCreation")?;
         if peek == &Token::ParenOpen {
             value.pop_front();
             paren = true;
@@ -517,9 +482,7 @@ impl TryFrom<&mut Parser> for TypeCreation {
             let mut exps = vec![];
 
             loop {
-                let peek = value
-                    .first()
-                    .ok_or(error!("TypeCreation", format!("Expected more tokens")))?;
+                let peek = value.first_err("TypeCreation")?;
 
                 if peek == &Token::AngleBracketClose {
                     value.pop_front();
@@ -535,9 +498,7 @@ impl TryFrom<&mut Parser> for TypeCreation {
             let mut exps = vec![];
 
             loop {
-                let peek = value
-                    .first()
-                    .ok_or(error!("TypeCreation", format!("Expected more tokens")))?;
+                let peek = value.first_err("TypeCreation")?;
 
                 match peek {
                     Token::BracketClose => {
@@ -546,28 +507,22 @@ impl TryFrom<&mut Parser> for TypeCreation {
                     }
                     Token::Char(';') => {
                         value.pop_front();
-                        let next = value.pop_front_err("TypeCreation")?;
-                        let ret = match next {
+
+                        let ret = match error!(
+                            "TypeCreation",
+                            value.pop_front(),
+                            [Token::Literal(Literals::Int(Int(false, _)))]
+                        )? {
                             Token::Literal(Literals::Int(Int(false, len))) => Ok(Self::ArrayLen(
                                 Box::new(exps.into_iter().next().ok_or(error!(
                                     "TypeCreation",
-                                    format!("Expected an expression")
+                                    Error::Other(format!("Expected an expression"))
                                 ))?),
                                 len as usize,
                             )),
-                            token => Err(error!(
-                                "TypeCreation",
-                                format!("Expected a number, got {token:#?}")
-                            )),
+                            _ => unreachable!(),
                         };
-
-                        let next = value.pop_front_err("TypeCreation")?;
-                        if next != Token::BracketClose {
-                            return Err(error!(
-                                "TypeCreation",
-                                format!("Expected bracketClose, got {next:#?}")
-                            ));
-                        }
+                        let _ = error!("TypeCreation", value.pop_front(), [Token::BracketClose])?;
 
                         return ret;
                     }
@@ -584,33 +539,23 @@ impl TryFrom<&mut Parser> for TypeCreation {
                 let mut fields = vec![];
 
                 loop {
-                    let peek = value
-                        .first()
-                        .ok_or(error!("TypeCreation", format!("Expected more tokens")))?;
-
-                    if peek == &Token::CurlyClose {
+                    if value.first_err("TypeCreation")? == &Token::CurlyClose {
                         value.pop_front();
                         break;
                     }
 
-                    let next = value.pop_front_err("TypeCreation")?;
-                    let name = if let Token::Identifier(iden) = next {
+                    let name = if let Token::Identifier(iden) =
+                        error!("TypeCreation", value.pop_front(), [Token::Identifier(_)])?
+                    {
                         iden
                     } else {
-                        return Err(error!(
-                            "TypeCreation",
-                            format!("Expected identifier, got {next:#?}")
-                        ));
+                        unreachable!()
                     };
-
-                    let next = value.pop_front_err("TypeCreation")?;
-                    if next != Token::Keyword(Keywords::LeftArrow) {
-                        return Err(error!(
-                            "TypeCreation",
-                            format!("Expected arrow keyword, got {next:#?}")
-                        ));
-                    }
-
+                    let _ = error!(
+                        "TypeCreation",
+                        value.pop_front(),
+                        [Token::Keyword(Keywords::LeftArrow)]
+                    )?;
                     let exp = error!(Exp::try_from(&mut *value), "TypeCreation")?;
 
                     fields.push((name, exp));
@@ -622,11 +567,7 @@ impl TryFrom<&mut Parser> for TypeCreation {
                 let mut args = vec![];
 
                 loop {
-                    let peek = value
-                        .first()
-                        .ok_or(error!("TypeCreation", format!("Expected more tokens")))?;
-
-                    if peek == &Token::ParenClose {
+                    if value.first_err("TypeCreation")? == &Token::ParenClose {
                         value.pop_front();
                         break;
                     }
@@ -640,13 +581,7 @@ impl TryFrom<&mut Parser> for TypeCreation {
         };
 
         if paren {
-            let next = value.pop_front_err("TypeCreation")?;
-            if next != Token::ParenClose {
-                return Err(error!(
-                    "TypeCreation",
-                    format!("Expected parenClose, got {next:#?}")
-                ));
-            }
+            let _ = error!("TypeCreation", value.pop_front(), [Token::ParenClose])?;
         }
 
         ret
@@ -711,30 +646,21 @@ impl TryFrom<&mut Parser> for TurboFish {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("TurboFish")?;
-        let var = if let Token::Identifier(iden) = next {
+        let var = if let Token::Identifier(iden) =
+            error!("TurboFish", value.pop_front(), [Token::Identifier(_)])?
+        {
             iden
         } else {
-            return Err(error!("TurboFish", format!("Expected iden, got {next:#?}")));
+            unreachable!()
         };
 
-        let next = value.pop_front_err("TurboFish")?;
-        if next != Token::Keyword(Keywords::TurboStart) {
-            return Err(error!(
-                "TurboFish",
-                format!("Expected turboStart keyword, got {next:#?}")
-            ));
-        }
-
+        let _ = error!(
+            "TurboFish",
+            value.pop_front(),
+            [Token::Keyword(Keywords::TurboStart)]
+        )?;
         let r#type = error!(Type::try_from(&mut *value), "TurboFish")?;
-
-        let next = value.pop_front_err("TurboFish")?;
-        if next != Token::AngleBracketClose {
-            return Err(error!(
-                "TurboFish",
-                format!("Expected angleBracketClose, got {next:#?}")
-            ));
-        }
+        let _ = error!("TurboFish", value.pop_front(), [Token::AngleBracketClose])?;
 
         Ok(Self(var, r#type))
     }
@@ -773,10 +699,23 @@ impl TryFrom<&mut Parser> for Infix {
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
         Ok(
-            match value
-                .first()
-                .ok_or(error!("Infix", format!("Expected more tokens")))?
-            {
+            match error!(
+                "Infix",
+                value.first(),
+                [
+                    Token::Char('+' | '-' | '*' | '%' | '='),
+                    Token::Slash,
+                    Token::Keyword(
+                        Keywords::And
+                            | Keywords::Or
+                            | Keywords::Xor
+                            | Keywords::BitwiseAnd
+                            | Keywords::BitwiseOr
+                    ),
+                    Token::AngleBracketOpen,
+                    Token::AngleBracketClose
+                ]
+            )? {
                 Token::Char('+') => {
                     value.pop_front();
                     Self::Add(
@@ -908,12 +847,7 @@ impl TryFrom<&mut Parser> for Infix {
                         ),
                     }
                 }
-                token => {
-                    return Err(error!(
-                        "Infix",
-                        format!("Token isn't infix, got {token:#?}")
-                    ))
-                }
+                _ => unreachable!(),
             },
         )
     }

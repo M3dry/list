@@ -12,25 +12,10 @@ impl TryFrom<&mut Parser> for Use {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Use")?;
-        if next != Token::ParenOpen {
-            return Err(error!("Use", format!("Expected parenOpen, got {next:#?}")));
-        }
-
-        let next = value.pop_front_err("Use")?;
-        if next != Token::Keyword(Keywords::Use) {
-            return Err(error!(
-                "Use",
-                format!("Expected Use keyword, got {next:#?}")
-            ));
-        }
-
+        let _ = error!("Use", value.pop_front(), [Token::ParenOpen])?;
+        let _ = error!("Use", value.pop_front(), [Token::Keyword(Keywords::Use)])?;
         let ret = error!(UsePath::try_from(&mut *value), "Use")?;
-
-        let next = value.pop_front_err("Use")?;
-        if next != Token::ParenClose {
-            return Err(error!("Use", format!("Expected parenClose, got {next:#?}")));
-        }
+        let _ = error!("Use", value.pop_front(), [Token::ParenClose])?;
 
         Ok(Self(ret))
     }
@@ -55,7 +40,7 @@ impl TryFrom<&mut Parser> for UsePath {
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
         Ok(
-            match value.pop_front_err("UsePath")? {
+            match error!("UsePath", value.pop_front(), [Token::ParenOpen, Token::Identifier(_), Token::Keyword(Keywords::Deref), Token::Char('*')])? {
                 Token::Char('*') | Token::Keyword(Keywords::Deref) => Self::All,
                 Token::Identifier(name)
                     if value.first() == Some(&Token::Keyword(Keywords::LeftArrow)) =>
@@ -72,8 +57,7 @@ impl TryFrom<&mut Parser> for UsePath {
 
                     loop {
                         let peek = value
-                            .first()
-                            .ok_or(error!("UsePath", format!("Expected more tokens")))?;
+                            .first_err("UsePath")?;
 
                         if peek == &Token::ParenClose {
                             value.pop_front();
@@ -85,12 +69,7 @@ impl TryFrom<&mut Parser> for UsePath {
 
                     Self::Multiple(multiple)
                 }
-                token => {
-                    return Err(error!(
-                        "UsePath",
-                        format!("Expected Identifier or ParenOpen, got {token:#?}")
-                    ))
-                }
+                _ => unreachable!(),
             },
         )
     }

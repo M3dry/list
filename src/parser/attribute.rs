@@ -12,32 +12,21 @@ impl TryFrom<&mut Parser> for Attribute {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Attribute")?;
-        if next != Token::Char('#') {
-            return Err(error!("Attribute", format!("Expected #, got {next:#?}")));
-        }
-        let next = value.pop_front_err("Attribute")?;
-        let (inner, next) = if next == Token::Char('!') {
-            (true, value.pop_front_err("Attribute")?)
+        let _ = error!("Attribute", value.pop_front(), [Token::Char('#')])?;
+        let next = error!(
+            "Attribute",
+            value.pop_front(),
+            [Token::Char('!'), Token::BracketOpen]
+        )?;
+        let inner = if next == Token::Char('!') {
+            let _ = error!("Attribute", value.pop_front(), [Token::BracketOpen])?;
+            true
         } else {
-            (false, next)
-        };
-        if next != Token::BracketOpen {
-            return Err(error!(
-                "Attribute",
-                format!("Expected bracketOpen, got {next:#?}")
-            ));
+            false
         };
 
         let attr_ops = error!(AttributeOps::try_from(&mut *value), "Attribute")?;
-
-        let next = value.pop_front_err("Attribute")?;
-        if next != Token::BracketClose {
-            return Err(error!(
-                "Attribute",
-                format!("Expected bracketClose, got {next:#?}")
-            ));
-        }
+        let _ = error!("Attribute", value.pop_front(), [Token::BracketClose])?;
 
         Ok(if inner {
             Self::Inner(attr_ops)
@@ -67,16 +56,22 @@ impl TryFrom<&mut Parser> for AttributeOps {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("AttributeOps")?;
+        let next = error!(
+            "AttributeOps",
+            value.pop_front(),
+            [Token::ParenOpen, Token::Identifier(_)]
+        )?;
         Ok(match next {
-            Token::ParenOpen => match value.pop_front_err("AttributeOps")? {
+            Token::ParenOpen => match error!(
+                "AttributeOps",
+                value.pop_front(),
+                [Token::Identifier(_), Token::Char('=')]
+            )? {
                 Token::Identifier(iden) => {
                     let mut args = vec![];
 
                     loop {
-                        let peek = value
-                            .first()
-                            .ok_or(error!("AttributeOps", format!("Expected more tokens")))?;
+                        let peek = value.first_err("AttributeOps")?;
 
                         if peek == &Token::ParenClose {
                             value.pop_front();
@@ -87,37 +82,20 @@ impl TryFrom<&mut Parser> for AttributeOps {
                     }
                 }
                 Token::Char('=') => {
-                    let iden = match value.pop_front_err("AttributeOps")? {
-                        Token::Identifier(iden) => iden,
-                        token => {
-                            return Err(error!(
-                                "AttributeOps",
-                                format!("Expected iden, got {token:#?}")
-                            ))
-                        }
-                    };
+                    let iden =
+                        match error!("AttributeOps", value.pop_front(), [Token::Identifier(_)])? {
+                            Token::Identifier(iden) => iden,
+                            _ => unreachable!(),
+                        };
                     let exp = error!(Exp::try_from(&mut *value), "AttributeOps")?;
-                    let next = value.pop_front_err("AttributeOps")?;
-                    if next != Token::ParenClose {
-                        return Err(error!("AttributeOps", format!("Expected parenClose, got {next:#?}")))
-                    }
+                    let _ = error!("AttributeOps", value.pop_front(), [Token::ParenClose])?;
 
                     Self::Assignment(iden, exp)
                 }
-                token => {
-                    return Err(error!(
-                        "AttributeOps",
-                        format!("Expected iden or =, got {token:#?}")
-                    ))
-                }
+                _ => unreachable!(),
             },
             Token::Identifier(iden) => Self::Identifier(iden),
-            token => {
-                return Err(error!(
-                    "AttributeOps",
-                    format!("Expected iden or parenOpen, got {token:#?}")
-                ))
-            }
+            _ => unreachable!(),
         })
     }
 }

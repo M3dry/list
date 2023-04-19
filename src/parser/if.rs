@@ -13,16 +13,8 @@ impl TryFrom<&mut Parser> for If {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("If")?;
-        if next != Token::ParenOpen {
-            return Err(error!("If", format!("Expected ParenOpen, got {next:#?}"),));
-        }
-
-        let next = value.pop_front_err("If")?;
-        if next != Token::Keyword(Keywords::If) {
-            return Err(error!("If", format!("Expected If keyword, got {next:#?}"),));
-        }
-
+        let _ = error!("If", value.pop_front(), [Token::ParenOpen])?;
+        let _ = error!("If", value.pop_front(), [Token::Keyword(Keywords::If)])?;
         let condition = error!(Exp::try_from(&mut *value), "If")?;
         let true_branch = error!(Exp::try_from(&mut *value), "If")?;
         let mut elif_branch = vec![];
@@ -38,17 +30,9 @@ impl TryFrom<&mut Parser> for If {
             break
         }
 
-        let next = value.pop_front_err("If")?;
-        if next != Token::Keyword(Keywords::Else) {
-            return Err(error!("If", format!("Expected else, got {next:#?}")))
-        }
-
+        let _ = error!("If", value.pop_front(), [Token::Keyword(Keywords::Else)])?;
         let false_branch = error!(Exp::try_from(&mut *value), "If")?;
-
-        let next = value.pop_front_err("If")?;
-        if next != Token::ParenClose {
-            return Err(error!("If", format!("Expected parenClose, got {next:#?}")))
-        }
+        let _ = error!("If", value.pop_front(), [Token::ParenClose])?;
 
         Ok(Self {
             condition,

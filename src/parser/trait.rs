@@ -6,7 +6,7 @@ use super::{
     error,
     exp::TurboFish,
     file::FileOps,
-    Parser, ParserError, ParserErrorStack,
+    Parser, ParserError, ParserErrorStack, Error,
 };
 
 #[derive(Debug)]
@@ -19,50 +19,28 @@ impl TryFrom<&mut Parser> for Trait {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Trait")?;
-        if next != Token::ParenOpen {
-            return Err(error!(
-                "Trait",
-                format!("Expected parenOpen, got {next:#?}")
-            ));
-        }
-
-        let next = value.pop_front_err("Trait")?;
-        if next != Token::Keyword(Keywords::Trait) {
-            return Err(error!(
-                "Trait",
-                format!("Expected trait keyword, got {next:#?}")
-            ));
-        }
-
+        let _ = error!("Trait", value.pop_front(), [Token::ParenOpen])?;
+        let _ = error!("Trait", value.pop_front(), [Token::Keyword(Keywords::Trait)])?;
         let name = if value.nth(1) == Some(&Token::Keyword(Keywords::TurboStart)) {
             Either::Right(error!(TurboFish::try_from(&mut *value), "Trait")?)
         } else {
-            match value.pop_front_err("Trait")? {
+            match error!("Trait", value.pop_front(), [Token::Identifier(_)])? {
                 Token::Identifier(iden) => Either::Left(iden),
-                token => return Err(error!("Trait", format!("Expected iden, got {token:#?}"))),
+                _ => unreachable!(),
             }
         };
         let mut body = vec![];
-        let next = value.pop_front_err("Trait")?;
-        if next != Token::BracketOpen {
-            return Err(error!(
-                "Trait",
-                format!("Expected bracketOpen, got {next:#?}")
-            ));
-        }
+        let _ = error!("Trait", value.pop_front(), [Token::BracketOpen])?;
 
         loop {
-            let peek = value
-                .first()
-                .ok_or(error!("Trait", format!("Expected more tokens")))?;
+            let peek = value.first_err("Trait")?;
 
             if peek == &Token::BracketClose {
                 value.pop_front();
                 break;
             }
 
-            body.push(match error!(FileOps::try_from(&mut *value), "Impl")? {
+            body.push(match error!(FileOps::try_from(&mut *value), "Trait")? {
                 file @ (FileOps::Use(_)
                 | FileOps::Function(_)
                 | FileOps::TypeAlias(_)
@@ -70,19 +48,13 @@ impl TryFrom<&mut Parser> for Trait {
                 file => {
                     return Err(error!(
                         "Trait",
-                        format!("Expected function, use, type alias or attribute, got {file:#?}")
+                        Error::Other(format!("Expected function, use, type alias or attribute, got {file:#?}"))
                     ))
                 }
             })
         }
 
-        let next = value.pop_front_err("Trait")?;
-        if next != Token::ParenClose {
-            return Err(error!(
-                "Trait",
-                format!("Expected parenClose, got {next:#?}")
-            ));
-        }
+        let _ = error!("Trait", value.pop_front(), [Token::ParenClose])?;
 
         Ok(Self { name, body })
     }

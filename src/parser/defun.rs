@@ -1,7 +1,7 @@
 use crate::tokenizer::{Keywords, Token};
 
 use super::{
-    args::ArgsTyped, error, exp::Exp, r#type::Type, Parser, ParserError, ParserErrorStack,
+    args::ArgsTyped, error, exp::Exp, r#type::Type, Parser, ParserError, ParserErrorStack, Error,
 };
 
 #[derive(Debug)]
@@ -25,45 +25,18 @@ impl TryFrom<&mut Parser> for Defun {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Defun")?;
-        if next != Token::ParenOpen {
-            return Err(error!(
-                "Defun",
-                format!("Expected ParenOpen, got {next:#?}"),
-            ));
-        }
-
+        let _ = error!("Defun", value.pop_front(), [Token::ParenOpen])?;
         let scope = Scope::try_from(&mut *value).unwrap();
-
-        let next = value.pop_front_err("Defun")?;
-        if next != Token::Keyword(Keywords::Defun) {
-            return Err(error!(
-                "Defun",
-                format!("Expected Defun keyword, got {next:#?}"),
-            ));
-        }
-
-        let next = value.pop_front_err("Defun")?;
-        let name = if let Token::Identifier(iden) = next {
+        let _ = error!("Defun", value.pop_front(), [Token::Keyword(Keywords::Defun)])?;
+        let name = if let Token::Identifier(iden) = error!("Defun", value.pop_front(), [Token::Identifier(_)])? {
             iden
         } else {
-            return Err(error!(
-                "Defun name",
-                format!("Expected Identifier, got {next:#?}"),
-            ));
+            unreachable!()
         };
-
         let args = error!(ArgsTyped::try_from(&mut *value), "Defun")?;
-
-        let next = value.pop_front_err("Defun")?;
-        if next != Token::Keyword(Keywords::LeftArrow) {
-            return Err(error!(
-                "Defun arrow",
-                format!("Expected Arrow keyword, got {next:#?}"),
-            ));
-        }
-
+        let _ = error!("Defun", value.pop_front(), [Token::Keyword(Keywords::LeftArrow)])?;
         let return_type = error!(Type::try_from(&mut *value), "Defun")?;
+
         if value.first() == Some(&Token::ParenClose) {
             value.pop_front();
             return Ok(Self::Header {
@@ -75,14 +48,7 @@ impl TryFrom<&mut Parser> for Defun {
         }
 
         let body = error!(Exp::try_from(&mut *value), "Defun")?;
-
-        let next = value.pop_front_err("Defun")?;
-        if next != Token::ParenClose {
-            return Err(error!(
-                "Defun",
-                format!("Expected parenClose, got {next:#?}")
-            ));
-        }
+        let _ = error!("Defun", value.pop_front(), [Token::ParenClose])?;
 
         Ok(Defun::Function {
             scope,
@@ -142,10 +108,7 @@ impl TryFrom<&mut Parser> for Scope {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value
-            .first()
-            .ok_or(error!("Scope", format!("Expected more tokens")))?;
-        match next {
+        match value.first_err("Scope")? {
             Token::Identifier(iden) => match &iden[..] {
                 "crate" => {
                     value.pop_front();
@@ -155,7 +118,7 @@ impl TryFrom<&mut Parser> for Scope {
                     value.pop_front();
                     Ok(Scope::Full)
                 }
-                iden => Err(error!("Scope iden", format!("Expected pub, got {iden:#?}"),)),
+                iden => Err(error!("Scope iden", Error::Other(format!("Expected pub or crate, got {iden:#?}")))),
             },
             _ => Ok(Scope::File),
         }

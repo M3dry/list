@@ -20,7 +20,7 @@ impl TryFrom<&mut Parser> for Type {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        match value.pop_front_err("Type")? {
+        match error!("Type", value.pop_front(), [Token::Ref, Token::Type(_), Token::Char(':'), Token::Identifier(_), Token::BracketOpen, Token::AngleBracketOpen, Token::ParenOpen])? {
             Token::Ref if value.first() == Some(&Token::Slash) => {
                 let lifetimes = error!(Lifetimes::try_from(&mut *value), "Type")?;
 
@@ -62,45 +62,27 @@ impl TryFrom<&mut Parser> for Type {
             Token::BracketOpen => {
                 let r#type = Box::new(error!(Type::try_from(&mut *value), "Type")?);
 
-                match value.pop_front_err("Type")? {
+                match error!("Type", value.pop_front(), [Token::BracketClose, Token::Char(';')])? {
                     Token::BracketClose => Ok(Type::Array(r#type, None)),
                     Token::Char(';') => {
-                        let Token::Literal(Literals::Int(Int(neg, len))) =
-                            value.pop_front_err("Type")?
+                        let Token::Literal(Literals::Int(Int(false, len))) =
+                            error!("Type", value.pop_front(), [Token::Literal(Literals::Int(Int(false, _)))])?
                         else {
-                                return Err(error!("Type", format!("")))
+                            unreachable!()
                         };
 
-                        if neg {
-                            return Err(error!(
-                                "Type",
-                                format!("Expected non negative number in array")
-                            ));
-                        }
-
-                        let next = value.pop_front_err("Type")?;
-                        if next != Token::BracketClose {
-                            return Err(error!(
-                                "Type",
-                                format!("Expected bracketClose, got {next:#?}")
-                            ));
-                        }
+                        let _ = error!("Type", value.pop_front(), [Token::BracketClose])?;
 
                         Ok(Type::Array(r#type, Some(len as usize)))
                     }
-                    token => Err(error!(
-                        "Type",
-                        format!("Expected BracketClose, got {token:#?}")
-                    )),
+                    _ => unreachable!(),
                 }
             }
             Token::AngleBracketOpen => {
                 let mut types = vec![];
 
                 loop {
-                    let peek = value
-                        .first()
-                        .ok_or(error!("Type", format!("Expected more tokens")))?;
+                    let peek = value.first_err("Type")?;
 
                     if peek == &Token::AngleBracketClose {
                         value.pop_front();
@@ -113,18 +95,17 @@ impl TryFrom<&mut Parser> for Type {
                 Ok(Type::Touple(types))
             }
             Token::ParenOpen => {
-                let next = value.pop_front_err("Type")?;
-                match next {
-                    Token::Type(builtin) => {
-                        if value.pop_front() != Some(Token::ParenClose) {
-                            Err(error!(
-                                "Type complex/builtin",
-                                format!("Expected an identifier, got a builtin type"),
-                            ))
-                        } else {
-                            Ok(Type::Builtin(builtin))
-                        }
-                    }
+                match error!("Type", value.pop_front(), [Token::Identifier(_)])? {
+                    // Token::Type(builtin) => {
+                    //     if value.pop_front() != Some(Token::ParenClose) {
+                    //         Err(error!(
+                    //             "Type complex/builtin",
+                    //             format!("Expected an identifier, got a builtin type"),
+                    //         ))
+                    //     } else {
+                    //         Ok(Type::Builtin(builtin))
+                    //     }
+                    // }
                     Token::Identifier(iden) => {
                         let mut types = vec![];
 
@@ -135,16 +116,10 @@ impl TryFrom<&mut Parser> for Type {
 
                         Ok(Type::Complex(iden, types))
                     }
-                    next => Err(error!(
-                        "Type complex/other",
-                        format!("Expected an identifier, got {next:#?}"),
-                    )),
+                    _ => unreachable!(),
                 }
             }
-            token => Err(error!(
-                "Type",
-                format!("Expected type, indentifier or OpenParen, got {token:#?}"),
-            )),
+            _ => unreachable!(),
         }
     }
 }
@@ -194,34 +169,20 @@ impl TryFrom<&mut Parser> for Lifetimes {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Lifetimes")?;
-        if next != Token::Slash {
-            return Err(error!(
-                "Lifetimes",
-                format!("Expected slash, got {next:#?}")
-            ));
-        }
-
+        let _ = error!("Lifetimes", value.pop_front(), [Token::Slash])?;
         let mut lifetimes = vec![];
 
         loop {
-            let peek = value
-                .first()
-                .ok_or(error!("Lifetimes", format!("Expected more tokens")))?;
+            let peek = value.first_err("Lifetimes")?;
 
             if peek == &Token::Slash {
                 value.pop_front();
                 break;
             }
 
-            match value.pop_front_err("Lifetimes")? {
+            match error!("Lifetimes", value.pop_front(), [Token::Identifier(_)])? {
                 Token::Identifier(iden) => lifetimes.push(iden),
-                token => {
-                    return Err(error!(
-                        "Lifetimes",
-                        format!("Expected identifier, got {token:#?}")
-                    ))
-                }
+                _ => unreachable!(),
             }
         }
 
@@ -273,7 +234,7 @@ impl TryFrom<&mut Parser> for NamespacedType {
             );
         }
 
-        Ok(match value.pop_front_err("NamespacedType")? {
+        Ok(match error!("NamespacedType", value.pop_front(), [Token::Identifier(_)])? {
             Token::Identifier(iden)
                 if value.first() == Some(&Token::Keyword(Keywords::LeftArrow)) =>
             {
@@ -287,12 +248,7 @@ impl TryFrom<&mut Parser> for NamespacedType {
                 )
             }
             Token::Identifier(iden) => NamespacedType::Str(iden),
-            token => {
-                return Err(error!(
-                    "NamespacedType",
-                    format!("Expected identifier, got {token:#?}")
-                ))
-            }
+            _ => unreachable!(),
         })
     }
 }
@@ -323,22 +279,10 @@ impl TryFrom<&mut Parser> for Generic {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Generic")?;
-        if !matches!(next, Token::Char(':')) {
-            return Err(error!(
-                "Generic",
-                format!("Expected char ':', got {next:#?}")
-            ));
-        }
-
-        let name = match value.pop_front_err("Generic")? {
+        let _ = error!("Generic", value.pop_front(), [Token::Char(':')])?;
+        let name = match error!("Generic", value.pop_front(), [Token::Identifier(_)])? {
             Token::Identifier(iden) => iden,
-            token => {
-                return Err(error!(
-                    "Generic",
-                    format!("Expected identifier, got {token:#?}")
-                ))
-            }
+            _ => unreachable!(),
         };
 
         if value.first() == Some(&Token::Slash) {
@@ -370,29 +314,17 @@ impl TryFrom<&mut Parser> for Constraints {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Constraints")?;
-        if next != Token::Slash {
-            return Err(error!(
-                "Constraints",
-                format!("Expected slash, got {next:#?}")
-            ));
-        }
-
+        let _ = error!("Constraints", value.pop_front(), [Token::Slash])?;
         let mut constraints = vec![];
 
         loop {
-            let next = value.pop_front_err("Constraints")?;
+            let next = error!("Constraints", value.pop_front(), [Token::Slash, Token::Identifier(_)])?;
             match next {
                 Token::Slash => {
                     return Ok(Self(constraints));
                 }
                 Token::Identifier(iden) => constraints.push(iden),
-                token => {
-                    return Err(error!(
-                        "Constraints",
-                        format!("Expected slash or identifier, got {token:#?}")
-                    ))
-                }
+                _ => unreachable!(),
             }
         }
     }
@@ -423,44 +355,20 @@ impl TryFrom<&mut Parser> for TypeAlias {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("TypeALias")?;
-        if next != Token::ParenOpen {
-            return Err(error!(
-                "TypeAlias",
-                format!("Expected parenOpen, got {next:#?}")
-            ));
-        }
-        let next = value.pop_front_err("TypeALias")?;
-        if next != Token::Keyword(Keywords::Type) {
-            return Err(error!(
-                "TypeAlias",
-                format!("Expected type keyword, got {next:#?}")
-            ));
-        }
-
-        let name = match value.pop_front_err("TypeAlias")? {
+        let _ = error!("TypeALias", value.pop_front(), [Token::ParenOpen])?;
+        let _ = error!("TypeALias", value.pop_front(), [Token::Keyword(Keywords::Type)])?;
+        let name = match error!("TypeAlias", value.pop_front(), [Token::Identifier(_)])? {
             Token::Identifier(iden) => iden,
-            token => {
-                return Err(error!(
-                    "TypeAlias",
-                    format!("Expected iden, got {token:#?}")
-                ))
-            }
+            _ => unreachable!(),
         };
+
         if value.first() == Some(&Token::ParenClose) {
             value.pop_front();
             return Ok(Self::Def(name))
         }
 
         let r#type = error!(Type::try_from(&mut *value), "TypeALias")?;
-
-        let next = value.pop_front_err("TypeALias")?;
-        if next != Token::ParenClose {
-            return Err(error!(
-                "TypeAlias",
-                format!("Expected parenClose, got {next:#?}")
-            ));
-        }
+        let _ = error!("TypeALias", value.pop_front(), [Token::ParenClose])?;
 
         Ok(Self::Alias { name, r#type })
     }

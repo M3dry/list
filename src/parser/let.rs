@@ -15,76 +15,41 @@ impl TryFrom<&mut Parser> for Let {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Let")?;
-        if next != Token::ParenOpen {
-            return Err(error!("Let", format!("Expected ParenOpen, got {next:#?}"),));
-        }
-
-        let next = value.pop_front_err("Let")?;
-        if next != Token::Keyword(Keywords::Let) {
-            return Err(error!(
-                "Let keyword",
-                format!("Expected Let keyword, got {next:#?}"),
-            ));
-        }
-
+        let _ = error!("Let", value.pop_front(), [Token::ParenOpen])?;
+        let _ = error!("Let", value.pop_front(), [Token::Keyword(Keywords::Let)])?;
         let mut vars = vec![];
+        let _ = error!("Let", value.pop_front(), [Token::ParenOpen])?;
 
-        if let Token::Identifier(_) = value
-            .nth(1)
-            .ok_or(error!("Let var", format!("Expected more tokens")))?
-        {
-            value.pop_front();
-            let iden = if let Token::Identifier(iden) = value.pop_front().unwrap() {
-                iden
-            } else {
-                panic!("this shouldn't happen")
-            };
-
-            vars.push((iden, Exp::try_from(&mut *value)?));
-            value.pop_front();
-        } else if value.pop_front().unwrap() == Token::ParenOpen {
-            loop {
-                let next = value.pop_front_err("Let vars")?;
-                if next == Token::ParenClose {
-                    break;
-                }
-                if next != Token::ParenOpen {
-                    return Err(error!(
-                        "Let vars",
-                        format!("Expected ParenOpen, got {next:#?}"),
-                    ));
-                }
-
-                let next = value.pop_front_err("Let vars")?;
-                let iden = if let Token::Identifier(iden) = next {
-                    iden
-                } else {
-                    return Err(error!(
-                        "Let vars/name",
-                        format!("Expected identifier, got {next:#?}"),
-                    ));
-                };
-
-                let exp = Exp::try_from(&mut *value)?;
-
-                let next = value.pop_front_err("Let vars")?;
-                if next != Token::ParenClose {
-                    return Err(error!(
-                        "Let vars/close",
-                        format!("Expected ParenClose, got {next:#?}"),
-                    ));
-                }
-
-                vars.push((iden, exp));
+        match error!("Let", value.pop_front(), [Token::Identifier(_), Token::ParenOpen])? {
+            Token::Identifier(iden) => {
+                vars.push((iden, Exp::try_from(&mut *value)?));
+                let _ = error!("Let", value.pop_front(), [Token::ParenClose])?;
             }
+            Token::ParenOpen => {
+                value.tokens.push_front(Token::ParenOpen);
+
+                loop {
+                    if error!("Let", value.pop_front(), [Token::ParenClose, Token::ParenOpen])? == Token::ParenClose {
+                        break;
+                    }
+
+                    let iden = if let Token::Identifier(iden) = error!("Let", value.pop_front(), [Token::Identifier(_)])? {
+                        iden
+                    } else {
+                        unreachable!()
+                    };
+
+                    let exp = Exp::try_from(&mut *value)?;
+                    let _ = error!("Let vars", value.pop_front(), [Token::ParenClose])?;
+
+                    vars.push((iden, exp));
+                }
+            }
+            _ => unreachable!(),
         }
 
         let body = error!(Exp::try_from(&mut *value), "Let")?;
-        let next = value.pop_front_err("Let")?;
-        if next != Token::ParenClose {
-            return Err(error!("Let", format!("Expected parenClose, got {next:#?}")))
-        }
+        let _ = error!("Let", value.pop_front(), [Token::ParenClose])?;
 
         Ok(Let {
             vars,

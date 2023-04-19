@@ -3,7 +3,7 @@ use either::Either;
 use crate::tokenizer::{Keywords, Token};
 
 use super::{
-    error, exp::TurboFish, file::FileOps, r#type::Generic, Parser, ParserError, ParserErrorStack,
+    error, exp::TurboFish, file::FileOps, r#type::Generic, Parser, ParserError, ParserErrorStack, Error,
 };
 
 #[derive(Debug)]
@@ -36,35 +36,19 @@ impl TryFrom<&mut Parser> for Impl {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Impl")?;
-        if next != Token::ParenOpen {
-            return Err(error!("Impl", format!("Expected parenOpen, got {next:#?}")));
-        }
-        let next = value.pop_front_err("Impl")?;
-        if next != Token::Keyword(Keywords::Impl) {
-            return Err(error!("Impl", format!("Expected parenOpen, got {next:#?}")));
-        }
-
+        let _ = error!("Impl", value.pop_front(), [Token::ParenOpen])?;
+        let _ = error!("Impl", value.pop_front(), [Token::Keyword(Keywords::Impl)])?;
         let mut generics = vec![];
         let mut lifetimes = vec![];
 
         loop {
-            let peek = value
-                .first()
-                .ok_or(error!("Impl", format!("Expected more tokens")))?;
-
-            match peek {
+            match value.first_err("Impl")? {
                 Token::Char(':') => generics.push(error!(Generic::try_from(&mut *value), "Impl")?),
                 Token::BackTick => {
                     value.pop_front();
-                    match value.pop_front_err("Impl")? {
+                    match error!("Impl", value.pop_front(), [Token::Identifier(_)])? {
                         Token::Identifier(iden) => lifetimes.push(iden),
-                        token => {
-                            return Err(error!(
-                                "Impl",
-                                format!("Expected identifier, got {token:#?}")
-                            ))
-                        }
+                        _ => unreachable!(),
                     }
                 }
                 _ => break,
@@ -74,14 +58,9 @@ impl TryFrom<&mut Parser> for Impl {
         let name = if value.nth(1) == Some(&Token::Keyword(Keywords::TurboStart)) {
             Either::Right(error!(TurboFish::try_from(&mut *value), "Impl")?)
         } else {
-            match value.pop_front_err("Impl")? {
+            match error!("Impl", value.pop_front(), [Token::Identifier(_)])? {
                 Token::Identifier(iden) => Either::Left(iden),
-                token => {
-                    return Err(error!(
-                        "Impl",
-                        format!("Expected iden or turbofish, got {token:#?}")
-                    ))
-                }
+                _ => unreachable!(),
             }
         };
 
@@ -90,14 +69,9 @@ impl TryFrom<&mut Parser> for Impl {
             let name = if value.nth(1) == Some(&Token::Keyword(Keywords::TurboStart)) {
                 Either::Right(error!(TurboFish::try_from(&mut *value), "Impl")?)
             } else {
-                match value.pop_front_err("Impl")? {
+                match error!("Impl", value.pop_front(), [Token::Identifier(_)])? {
                     Token::Identifier(iden) => Either::Left(iden),
-                    token => {
-                        return Err(error!(
-                            "Impl",
-                            format!("Expected iden or turbofish, got {token:#?}")
-                        ))
-                    }
+                    _ => unreachable!()
                 }
             };
             Some(name)
@@ -105,20 +79,11 @@ impl TryFrom<&mut Parser> for Impl {
             None
         };
 
-        let next = value.pop_front_err("Impl")?;
-        if next != Token::BracketOpen {
-            return Err(error!(
-                "Impl",
-                format!("Expected bracketOpen, got {next:#?}")
-            ));
-        }
-
+        let _ = error!("Impl", value.pop_front(), [Token::BracketOpen])?;
         let mut funcs = vec![];
 
         loop {
-            let peek = value
-                .first()
-                .ok_or(error!("Impl", format!("Expected more tokens")))?;
+            let peek = value.first_err("Impl")?;
 
             if peek == &Token::BracketClose {
                 value.pop_front();
@@ -133,19 +98,13 @@ impl TryFrom<&mut Parser> for Impl {
                 file => {
                     return Err(error!(
                         "Trait",
-                        format!("Expected function, use, type alias or attribute, got {file:#?}")
+                        Error::Other(format!("Expected function, use, type alias or attribute, got {file:#?}"))
                     ))
                 }
             })
         }
 
-        let next = value.pop_front_err("Impl")?;
-        if next != Token::ParenClose {
-            return Err(error!(
-                "Impl",
-                format!("Expected parenClose, got {next:#?}")
-            ));
-        }
+        let _ = error!("Impl", value.pop_front(), [Token::ParenClose])?;
 
         Ok(if let Some(r#trait) = for_trait {
             Self::Trait {

@@ -3,7 +3,7 @@ use either::Either;
 use crate::tokenizer::{Keywords, Literals, Token};
 
 use super::{
-    error, exp::Exp, r#type::NamespacedType, range::Range, Parser, ParserError, ParserErrorStack,
+    error, exp::Exp, r#type::NamespacedType, range::Range, Parser, ParserError, ParserErrorStack, Error,
 };
 
 #[derive(Debug)]
@@ -16,29 +16,13 @@ impl TryFrom<&mut Parser> for Match {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Match")?;
-        if next != Token::ParenOpen {
-            return Err(error!(
-                "Match",
-                format!("Expected ParenOpen, got {next:#?}"),
-            ));
-        }
-
-        let next = value.pop_front_err("Match")?;
-        if next != Token::Keyword(Keywords::Match) {
-            return Err(error!(
-                "Match",
-                format!("Expected Match keyword, got {next:#?}"),
-            ));
-        }
-
+        let _ = error!("Match", value.pop_front(), [Token::ParenOpen])?;
+        let _ = error!("Match", value.pop_front(), [Token::Keyword(Keywords::Match)])?;
         let against = error!(Exp::try_from(&mut *value), "Match")?;
         let mut branches = vec![];
 
         loop {
-            let peek = value
-                .first()
-                .ok_or(error!("Match", format!("Expected more tokens"),))?;
+            let peek = value.first_err("Match")?;
 
             if *peek == Token::ParenClose {
                 value.pop_front();
@@ -75,16 +59,8 @@ impl TryFrom<&mut Parser> for Branch {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Branch")?;
-        if next != Token::ParenOpen {
-            return Err(error!(
-                "Branch",
-                format!("Expected ParenOpen, got {next:#?}"),
-            ));
-        }
-
+        let _ = error!("Branch", value.pop_front(), [Token::ParenOpen])?;
         let pattern = error!(Pattern::try_from(&mut *value), "Branch")?;
-
         let ret = if value.first() == Some(&Token::Keyword(Keywords::If)) {
             value.pop_front();
 
@@ -100,16 +76,9 @@ impl TryFrom<&mut Parser> for Branch {
                 ret: error!(Exp::try_from(&mut *value), "Branch")?,
             })
         };
+        let _ = error!("Branch close", value.pop_front(), [Token::ParenClose])?;
 
-        let next = value.pop_front_err("Branch close")?;
-        if next != Token::ParenClose {
-            Err(error!(
-                "Branch",
-                format!("Expected ParenClose, got {next:#?}"),
-            ))
-        } else {
-            ret
-        }
+        ret
     }
 }
 
@@ -147,7 +116,7 @@ impl TryFrom<&mut Parser> for Pattern {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Pattern")?;
+        let next = error!("Pattern", value.pop_front(), [Token::Identifier(_), Token::Literal(_), Token::BracketOpen, Token::AngleBracketOpen, Token::DoubleDot, Token::ParenOpen])?;
         Ok(match next {
             Token::Identifier(iden) if matches!(value.first(), Some(&Token::Char('@'))) => {
                 value.pop_front();
@@ -163,7 +132,7 @@ impl TryFrom<&mut Parser> for Pattern {
                 Self::Enum(error!(NamespacedType::try_from(&mut *value), "Pattern")?)
             }
             Token::Identifier(iden) => Self::Variable(iden),
-            lit @ Token::Literal(Literals::Int(..)) if value.first() == Some(&Token::DoubleDot) => {
+            lit @ Token::Literal(Literals::Int(..) | Literals::Char(_)) if value.first() == Some(&Token::DoubleDot) => {
                 value.tokens.push_front(lit);
 
                 Self::Range(match error!(Range::try_from(&mut *value), "Pattern")? {
@@ -183,7 +152,7 @@ impl TryFrom<&mut Parser> for Pattern {
                     range => {
                         return Err(error!(
                             "Pattern",
-                            format!("Expected range to consist of literals, got {range:#?}")
+                            Error::Other(format!("Expected range to consist of literals, got {range:#?}"))
                         ))
                     }
                 })
@@ -193,9 +162,7 @@ impl TryFrom<&mut Parser> for Pattern {
                 let mut elems = vec![];
 
                 loop {
-                    let peek = value
-                        .first()
-                        .ok_or(error!("Pattern", format!("Expected more tokens")))?;
+                    let peek = value.first_err("Pattern")?;
 
                     match peek {
                         Token::BracketClose => {
@@ -212,9 +179,7 @@ impl TryFrom<&mut Parser> for Pattern {
                 let mut elems = vec![];
 
                 loop {
-                    let peek = value
-                        .first()
-                        .ok_or(error!("Pattern", format!("Expected more tokens")))?;
+                    let peek = value.first_err("Pattern")?;
 
                     match peek {
                         Token::AngleBracketClose => {
@@ -229,15 +194,13 @@ impl TryFrom<&mut Parser> for Pattern {
             }
             Token::DoubleDot => Self::Rest,
             Token::ParenOpen => {
-                let next = value.pop_front_err("Pattern")?;
-                let ret = match next {
+                let ret = match error!("Pattern", value.pop_front(), [Token::Keyword(Keywords::Or), Token::Identifier(_), Token::ParenOpen, Token::Literal(_)])? {
                     Token::Keyword(Keywords::Or) => {
                         let mut pats = vec![];
 
                         loop {
-                            let peek = value
-                                .first()
-                                .ok_or(error!("Pattern", format!("Expected more tokens")))?;
+                            let peek = value.first_err("Pattern")?;
+
                             if peek == &Token::ParenClose {
                                 value.pop_front();
                                 return Ok(Self::Or(pats));
@@ -251,9 +214,7 @@ impl TryFrom<&mut Parser> for Pattern {
                         let namespace = error!(NamespacedType::try_from(&mut *value), "Pattern")?;
 
                         return Ok(
-                            match value
-                                .first()
-                                .ok_or(error!("Pattern", format!("Expected more tokens")))?
+                            match value.first_err("Pattern")?
                             {
                                 Token::ParenClose => {
                                     value.pop_front();
@@ -267,13 +228,7 @@ impl TryFrom<&mut Parser> for Pattern {
                                         let peek = value.first_err("Pattern")?;
                                         if peek == &Token::CurlyClose {
                                             value.pop_front();
-                                            let next = value.pop_front_err("Pattern")?;
-                                            if next != Token::ParenClose {
-                                                return Err(error!(
-                                                    "Pattern",
-                                                    format!("Expected parenClose, got {next:#?}")
-                                                ));
-                                            }
+                                            let _ = error!("Pattern", value.pop_front(), [Token::ParenClose])?;
 
                                             break Self::Struct(namespace, fields);
                                         }
@@ -281,14 +236,9 @@ impl TryFrom<&mut Parser> for Pattern {
                                         if value.nth(1)
                                             == Some(&Token::Keyword(Keywords::LeftArrow))
                                         {
-                                            let field = match value.pop_front_err("Patter")? {
+                                            let field = match error!("Pattern", value.pop_front(), [Token::Identifier(_)])? {
                                                 Token::Identifier(iden) => iden,
-                                                token => {
-                                                    return Err(error!(
-                                                        "Pattern",
-                                                        format!("Expected iden, got {token:#?}")
-                                                    ))
-                                                }
+                                                _ => unreachable!(),
                                             };
                                             value.pop_front();
                                             let pat =
@@ -296,16 +246,11 @@ impl TryFrom<&mut Parser> for Pattern {
 
                                             fields.push(Either::Left((field, pat)))
                                         } else {
-                                            match value.pop_front_err("Pattern")? {
+                                            match error!("Pattern", value.pop_front(), [Token::Identifier(_)])? {
                                                 Token::Identifier(iden) => {
                                                     fields.push(Either::Right(iden))
                                                 }
-                                                token => {
-                                                    return Err(error!(
-                                                        "Pattern",
-                                                        format!("Expected iden, got {token:#?}")
-                                                    ))
-                                                }
+                                                _ => unreachable!()
                                             }
                                         }
                                     }
@@ -324,7 +269,7 @@ impl TryFrom<&mut Parser> for Pattern {
                                     }
                                 }
                             },
-                        );
+                        )
                     }
                     Token::Identifier(iden) => Self::Variable(iden),
                     Token::Literal(literal) => Self::Literal(literal),
@@ -332,13 +277,7 @@ impl TryFrom<&mut Parser> for Pattern {
                     _ => todo!(),
                 };
 
-                let next = value.pop_front_err("Pattern")?;
-                if next != Token::ParenClose {
-                    return Err(error!(
-                        "Pattern",
-                        format!("Expected parenClose, got {next:#?}")
-                    ));
-                }
+                let _ = error!("Pattern", value.pop_front(), [Token::ParenClose])?;
 
                 ret
             }

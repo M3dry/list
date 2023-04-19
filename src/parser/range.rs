@@ -20,13 +20,7 @@ impl TryFrom<&mut Parser> for Range {
             false
         };
         let start = error!(Exp::try_from(&mut *value), "Range")?;
-        let next = value.pop_front_err("Range")?;
-        if next != Token::DoubleDot {
-            return Err(error!(
-                "Range",
-                format!("Expected doubleDot, got {next:#?}")
-            ));
-        }
+        let _ = error!("Range", value.pop_front(), [Token::DoubleDot])?;
         let inclusive = match value.first() {
             Some(&Token::Char('=')) => {
                 value.pop_front();

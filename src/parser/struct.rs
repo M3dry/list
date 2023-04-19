@@ -25,38 +25,18 @@ impl TryFrom<&mut Parser> for Struct {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Struct")?;
-        if next != Token::ParenOpen {
-            return Err(error!(
-                "Struct",
-                format!("Expected ParenOpen, got {next:#?}")
-            ));
-        }
-
-        let next = value.pop_front_err("Struct")?;
-        if next != Token::Keyword(Keywords::Struct) {
-            return Err(error!(
-                "Struct",
-                format!("Expected Struct keyword, got {next:#?}")
-            ));
-        }
-
-        let next = value.pop_front_err("Struct")?;
-        let name = if let Token::Identifier(iden) = next {
+        let _ = error!("Struct", value.pop_front(), [Token::ParenOpen])?;
+        let _ = error!("Struct", value.pop_front(), [Token::Keyword(Keywords::Struct)])?;
+        let name = if let Token::Identifier(iden) = error!("Struct", value.pop_front(), [Token::Identifier(_)])? {
             iden
         } else {
-            return Err(error!(
-                "Struct",
-                format!("Expected identifier, got {next:#?}")
-            ));
+            unreachable!()
         };
 
         let mut generics = vec![];
 
         loop {
-            let peek = value
-                .first()
-                .ok_or(error!("Struct", format!("Expected more tokens")))?;
+            let peek = value.first_err("Struct")?;
 
             if let Token::Char(':') = peek {
                 generics.push(error!(Generic::try_from(&mut *value), "Struct")?)
@@ -67,14 +47,7 @@ impl TryFrom<&mut Parser> for Struct {
 
         if value.first() == Some(&Token::CurlyOpen) {
             let fields = error!(StructFields::try_from(&mut *value), "Struct")?;
-
-            let next = value.pop_front_err("Struct")?;
-            if next != Token::ParenClose {
-                return Err(error!(
-                    "Struct",
-                    format!("Expected ParenClose, got {next:#?}")
-                ));
-            }
+            let _ = error!("Struct", value.pop_front(), [Token::ParenClose])?;
 
             Ok(Struct::Normal {
                 name,
@@ -85,9 +58,7 @@ impl TryFrom<&mut Parser> for Struct {
             let mut types = vec![];
 
             loop {
-                let peek = value
-                    .first()
-                    .ok_or(error!("Struct", format!("Expected more tokens")))?;
+                let peek = value.first_err("Struct")?;
 
                 if peek == &Token::ParenClose {
                     value.pop_front();
@@ -169,20 +140,11 @@ impl TryFrom<&mut Parser> for StructFields {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("StructFields")?;
-        if next != Token::CurlyOpen {
-            return Err(error!(
-                "StructFields",
-                format!("Expected CurlyOpen, got {next:#?}")
-            ));
-        }
-
+        let _ = error!("StructFields", value.pop_front(), [Token::CurlyOpen])?;
         let mut fields = vec![];
 
         loop {
-            let peek = value
-                .first()
-                .ok_or(error!("StructFields", format!("Expected more tokens")))?;
+            let peek = value.first_err("StructFields")?;
             if peek == &Token::CurlyClose {
                 value.pop_front();
                 break;
@@ -222,41 +184,23 @@ impl TryFrom<&mut Parser> for StructField {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let peek = value
-            .first()
-            .ok_or(error!("StructField", format!("Expected more tokens")))?;
+        let peek = value.first_err("StructField")?;
 
-        let (attr, next) = if peek == &Token::Char('#') {
-            (
-                Some(error!(Attribute::try_from(&mut *value), "StructField")?),
-                value.pop_front_err("StructField")?,
-            )
+        let attr = if peek == &Token::Char('#') {
+                Some(error!(Attribute::try_from(&mut *value), "StructField")?)
         } else {
-            (None, value.pop_front_err("StructField")?)
+            None
         };
 
-        Ok(match next {
+        Ok(match error!("StructField", value.pop_front(), [Token::Identifier(_)])? {
             Token::Identifier(iden) => {
                 let name = iden;
-
-                let next = value.pop_front_err("StructField")?;
-                if next != Token::Keyword(Keywords::LeftArrow) {
-                    return Err(error!(
-                        "StructField",
-                        format!("Expected arror keyword, got {next:#?}")
-                    ))?;
-                }
-
+                let _ = error!("StructField", value.pop_front(), [Token::Keyword(Keywords::LeftArrow)])?;
                 let r#type = error!(Type::try_from(&mut *value), "StructField")?;
 
                 StructField { attr, name, r#type }
             }
-            token => {
-                return Err(error!(
-                    "StructField",
-                    format!("Expected identifier, got {token:#?}")
-                ))
-            }
+            _ => unreachable!(),
         })
     }
 }

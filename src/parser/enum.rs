@@ -18,35 +18,18 @@ impl TryFrom<&mut Parser> for Enum {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Enum")?;
-        if next != Token::ParenOpen {
-            return Err(error!("Enum", format!("Expected ParenOpen, got {next:#?}")));
-        }
-
-        let next = value.pop_front_err("Enum")?;
-        if next != Token::Keyword(Keywords::Enum) {
-            return Err(error!(
-                "Enum",
-                format!("Expected Enum keyword, got {next:#?}")
-            ));
-        }
-
-        let next = value.pop_front_err("Enum")?;
-        let name = if let Token::Identifier(iden) = next {
+        let _ = error!("Enum", value.pop_front(), [Token::ParenOpen])?;
+        let _ = error!("Enum", value.pop_front(), [Token::Keyword(Keywords::Enum)])?;
+        let name = if let Token::Identifier(iden) = error!("Enum", value.pop_front(), [Token::Identifier(_)])? {
             iden
         } else {
-            return Err(error!(
-                "Enum",
-                format!("Expected identifier, got {next:#?}")
-            ));
+            unreachable!()
         };
 
         let mut generics = vec![];
 
         loop {
-            let peek = value
-                .first()
-                .ok_or(error!("Enum", format!("Expected more tokens")))?;
+            let peek = value.first_err("Enum")?;
 
             if let Token::Char(':') = peek {
                 generics.push(error!(Generic::try_from(&mut *value), "Enum")?)
@@ -58,9 +41,8 @@ impl TryFrom<&mut Parser> for Enum {
         let mut variants = vec![];
 
         loop {
-            let peek = value
-                .first()
-                .ok_or(error!("Enum", format!("Expected more tokens")))?;
+            let peek = value.first_err("Enum")?;
+
             if peek == &Token::ParenClose {
                 value.pop_front();
                 break;
@@ -117,22 +99,15 @@ impl TryFrom<&mut Parser> for Variant {
                 Box::new(error!(Variant::try_from(&mut *value), "Variant")?),
             ));
         }
-        match value.pop_front_err("Variant")? {
+        match error!("Variant", value.pop_front(), [Token::Identifier(_), Token::ParenOpen])? {
             Token::Identifier(iden) => Ok(Variant::Simple(iden)),
             Token::ParenOpen => {
-                let name = match value.pop_front_err("Variant")? {
+                let name = match error!("Variant", value.pop_front(), [Token::Identifier(_)])? {
                     Token::Identifier(iden) => iden,
-                    token => {
-                        return Err(error!(
-                            "Variant",
-                            format!("Expected identifier, got {token:#?}")
-                        ))
-                    }
+                    _ => unreachable!(),
                 };
 
-                match value
-                    .first()
-                    .ok_or(error!("Variant", format!("Expected more tokens")))?
+                match value.first_err("Variant")?
                 {
                     &Token::ParenClose => {
                         value.pop_front();
@@ -141,21 +116,16 @@ impl TryFrom<&mut Parser> for Variant {
                     &Token::CurlyOpen => {
                         let fields = error!(StructFields::try_from(&mut *value), "Variant")?;
 
-                        match value.pop_front_err("Variant")? {
+                        match error!("Variant", value.pop_front(), [Token::ParenClose])? {
                             Token::ParenClose => Ok(Variant::Struct(name, fields)),
-                            token => Err(error!(
-                                "Variant",
-                                format!("Expected ParenClose, got {token:#?}")
-                            )),
+                            _ => unreachable!()
                         }
                     }
                     _ => {
                         let mut r#types = vec![];
 
                         loop {
-                            let peek = value
-                                .first()
-                                .ok_or(error!("Variant", format!("Expected more tokens")))?;
+                            let peek = value.first_err("Variant")?;
 
                             if peek == &Token::ParenClose {
                                 value.pop_front();
@@ -169,10 +139,7 @@ impl TryFrom<&mut Parser> for Variant {
                     }
                 }
             }
-            token => Err(error!(
-                "Variant",
-                format!("Expected ParenOpen or identifier, got {token:#?}")
-            )),
+            _ => unreachable!()
         }
     }
 }

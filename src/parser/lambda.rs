@@ -12,32 +12,11 @@ impl TryFrom<&mut Parser> for Lambda {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Lambda")?;
-        if next != Token::ParenOpen {
-            return Err(error!(
-                "Lambda",
-                format!("Expected ParenOpen, got {next:#?}"),
-            ));
-        }
-
-        let next = value.pop_front_err("Lambda")?;
-        if next != Token::Keyword(Keywords::Lambda) {
-            return Err(error!(
-                "Lambda",
-                format!("Expected Lambda Keyword, got {next:#?}"),
-            ));
-        }
-
+        let _ = error!("Lambda", value.pop_front(), [Token::ParenOpen])?;
+        let _ = error!("Lambda", value.pop_front(), [Token::Keyword(Keywords::Lambda)])?;
         let args = error!(Args::try_from(&mut *value), "Lambda")?;
         let body = error!(Exp::try_from(&mut *value), "Lambda")?;
-
-        let next = value.pop_front_err("Lambda")?;
-        if next != Token::ParenClose {
-            return Err(error!(
-                "Lambda",
-                format!("Expected ParenClose, got {next:#?}"),
-            ));
-        }
+        let _ = error!("Lambda", value.pop_front(), [Token::ParenClose])?;
 
         Ok(Lambda { args, body })
     }

@@ -6,8 +6,8 @@ use std::{
 #[derive(Debug, PartialEq, Eq)]
 pub struct Tokens(pub(crate) Vec<Token>);
 
-#[derive(Debug, PartialEq, Eq)]
-pub(crate) enum Token {
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum Token {
     BackTick,
     Literal(Literals),
     Keyword(Keywords),
@@ -33,7 +33,7 @@ impl From<Vec<Token>> for Tokens {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Int(pub bool, pub u128);
 
 impl Int {
@@ -64,7 +64,7 @@ impl ToString for Int {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Literals {
     Int(Int),
     String(String),
@@ -84,8 +84,8 @@ impl ToString for Literals {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub(crate) enum Keywords {
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum Keywords {
     TurboStart,
     Type,
     If,
@@ -121,7 +121,7 @@ pub(crate) enum Keywords {
     BitwiseOr,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum BuiltinTypes {
     U8,
     U16,

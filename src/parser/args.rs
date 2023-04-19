@@ -3,7 +3,7 @@ use crate::tokenizer::{Keywords, Token};
 use super::{
     error,
     r#type::{Generic, Type},
-    Parser, ParserError, ParserErrorStack,
+    Parser, ParserError, ParserErrorStack, Error,
 };
 
 #[derive(Debug)]
@@ -18,7 +18,7 @@ impl TryFrom<&mut Parser> for Arg {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Arg")?;
+        let next = error!("Arg", value.pop_front(), [Token::Ref, Token::Char(':'), Token::Identifier(_)])?;
         let name = match next {
             Token::Identifier(iden) if &iden == "self" => return Ok(Arg::SelfA(Type::SelfA)),
             w @ Token::Ref => {
@@ -29,7 +29,7 @@ impl TryFrom<&mut Parser> for Arg {
                     Type::Ref(_, t) | Type::RefMut(_, t) if matches!(**t, Type::SelfA) => {
                         return Ok(Self::SelfA(ret))
                     }
-                    token => return Err(error!("Arg", format!("Expected self, got {token:#?}"))),
+                    token => return Err(error!("Arg", Error::Other(format!("Expected self, got {token:#?}")))),
                 }
             }
             w @ Token::Char(':') => {
@@ -37,12 +37,7 @@ impl TryFrom<&mut Parser> for Arg {
                 return Ok(Arg::Generic(error!(Generic::try_from(&mut *value), "Arg")?));
             }
             Token::Identifier(iden) => iden,
-            _ => {
-                return Err(error!(
-                    "Arg name",
-                    format!("Expected identifier, got {next:#?}"),
-                ));
-            }
+            _ => unreachable!(),
         };
 
         let next = value.first();
@@ -73,18 +68,10 @@ impl TryFrom<&mut Parser> for ArgsTyped {
         let mut generics = vec![];
         let mut lifetimes = vec![];
 
-        let next = value.pop_front_err("ArgsTyped")?;
-        if next != Token::ParenOpen {
-            return Err(error!(
-                "ArgsTyped",
-                format!("Expected ParenOpen, got {next:#?}"),
-            ));
-        }
+        let _ = error!("ArgsTyped", value.pop_front(), [Token::ParenOpen])?;
 
         loop {
-            let peek = value
-                .first()
-                .ok_or(error!("ArgsTyped", format!("Expected more tokens")))?;
+            let peek = value.first_err("ArgsTyped")?;
 
             match peek {
                 Token::Char(':') => {
@@ -92,14 +79,9 @@ impl TryFrom<&mut Parser> for ArgsTyped {
                 }
                 Token::BackTick => {
                     value.pop_front();
-                    match value.pop_front_err("ArgsTyped")? {
+                    match error!("ArgsTyped", value.pop_front(), [Token::Identifier(_)])? {
                         Token::Identifier(iden) => lifetimes.push(iden),
-                        token => {
-                            return Err(error!(
-                                "ArgsTyped",
-                                format!("Expected identifier, got {token:#?}")
-                            ))
-                        }
+                        _ => unreachable!(),
                     }
                 }
                 _ => break,
@@ -115,11 +97,11 @@ impl TryFrom<&mut Parser> for ArgsTyped {
             }
             let arg = error!(Arg::try_from(&mut *value), "ArgsTyped")?;
             match arg {
-                Arg::Generic(_) => return Err(error!("ArgsTyped", format!("Expected a named arg, got a generic, those should be defined before named args"))),
+                Arg::Generic(_) => return Err(error!("ArgsTyped", Error::Other(format!("Expected a named arg, got a generic, those should be defined before named args")))),
                 Arg::Simple(_) => {
                     return Err(error!(
                         "ArgsTyped",
-                        format!("Expected named arg, got a simple arg"),
+                        Error::Other(format!("Expected named arg, got a simple arg")),
                     ))
                 }
                 Arg::SelfA(selft2) => {
@@ -198,12 +180,9 @@ impl TryFrom<&mut Parser> for Args {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Args")?;
-        if next != Token::ParenOpen {
-            return Err(error!("Args", format!("Expected ParenOpen, got {next:#?}"),));
-        }
-
+        let _ = error!("Args", value.pop_front(), [Token::ParenOpen])?;
         let mut args = vec![];
+
         loop {
             if value.first() == Some(&Token::ParenClose) {
                 value.pop_front();
@@ -213,7 +192,7 @@ impl TryFrom<&mut Parser> for Args {
             let arg = error!(Arg::try_from(&mut *value), "Args")?;
             match arg {
                 Arg::Simple(name) => args.push(name),
-                _ => return Err(error!("Args arg", format!("Expected just simple args"),)),
+                _ => return Err(error!("Args arg", Error::Other(format!("Expected just simple args")))),
             }
         }
 

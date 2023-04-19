@@ -16,43 +16,22 @@ impl TryFrom<&mut Parser> for Mod {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let next = value.pop_front_err("Mod")?;
-        if next != Token::ParenOpen {
-            return Err(error!("Mod", format!("Expected parenOpen, got {next:#?}")));
-        }
-
+        let _ = error!("Mod", value.pop_front(), [Token::ParenOpen])?;
         let scope = Scope::try_from(&mut *value).unwrap();
-        let next = value.pop_front_err("Mod")?;
-        if next != Token::Keyword(Keywords::Mod) {
-            return Err(error!(
-                "Mod",
-                format!("Expected mod keyword, got {next:#?}")
-            ));
-        }
-
-        let name = match value.pop_front_err("Mod")? {
+        let _ = error!("Mod", value.pop_front(), [Token::Keyword(Keywords::Mod)])?;
+        let name = match error!("Mod", value.pop_front(), [Token::Identifier(_)])? {
             Token::Identifier(iden) => iden,
-            token => return Err(error!("Mod", format!("Expected iden, got {token:#?}"))),
+            _ => unreachable!(),
         };
 
-        let next = value.pop_front_err("Mod")?;
-        if next == Token::ParenClose {
+        if error!("Mod", value.pop_front(), [Token::ParenClose, Token::BracketOpen])? == Token::ParenClose {
             return Ok(Self::Header(scope, name));
-        } else if next != Token::BracketOpen {
-            return Err(error!(
-                "Mod",
-                format!("Expected bracketOpen, got {next:#?}")
-            ));
         }
 
         let mut body = vec![];
 
         loop {
-            let peek = value
-                .first()
-                .ok_or(error!("Mod", format!("Expected more tokens")))?;
-
-            if peek == &Token::BracketClose {
+            if value.first_err("Mod")? == &Token::BracketClose {
                 value.pop_front();
                 break;
             }
@@ -60,10 +39,7 @@ impl TryFrom<&mut Parser> for Mod {
             body.push(error!(FileOps::try_from(&mut *value), "Mod")?)
         }
 
-        let next = value.pop_front_err("Mod")?;
-        if next != Token::ParenClose {
-            return Err(error!("Mod", format!("Expected parenClose, got {next:#?}")));
-        }
+        let _ = error!("Mod", value.pop_front(), [Token::ParenClose])?;
 
         Ok(Self::Full { scope, name, body })
     }

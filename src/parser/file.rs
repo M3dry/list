@@ -62,10 +62,22 @@ impl TryFrom<&mut Parser> for FileOps {
         }
 
         Ok(
-            match value
-                .nth(1)
-                .ok_or(error!("FileOps", format!("Expected more tokens")))?
-            {
+            match error!(
+                "FileOps",
+                value.nth(1),
+                [
+                    Token::Keyword(
+                        Keywords::Use
+                            | Keywords::Enum
+                            | Keywords::Struct
+                            | Keywords::Defun
+                            | Keywords::Impl
+                            | Keywords::Trait
+                            | Keywords::Type
+                    ),
+                    Token::Identifier(_)
+                ]
+            )? {
                 Token::Keyword(Keywords::Use) => {
                     Self::Use(error!(Use::try_from(&mut *value), "FileOps")?)
                 }
@@ -79,9 +91,7 @@ impl TryFrom<&mut Parser> for FileOps {
                     Self::Function(error!(Defun::try_from(&mut *value), "FileOps")?)
                 }
                 Token::Identifier(iden) if &iden[..] == "pub" || &iden[..] == "crate" => {
-                    match value
-                        .nth(2)
-                        .ok_or(error!("FileOps", format!("Expected more tokens")))?
+                    match error!("FileOps", value.nth(2), [Token::Keyword(Keywords::Defun | Keywords::Mod)])?
                     {
                         Token::Keyword(Keywords::Defun) => {
                             Self::Function(error!(Defun::try_from(&mut *value), "FileOps")?)
@@ -89,12 +99,7 @@ impl TryFrom<&mut Parser> for FileOps {
                         Token::Keyword(Keywords::Mod) => {
                             Self::Mod(error!(Mod::try_from(&mut *value), "FileOps")?)
                         }
-                        token => {
-                            return Err(error!(
-                                "FileOps",
-                                format!("Expected defun or mod keyword, got {token:#?}")
-                            ))
-                        }
+                        _ => unreachable!(),
                     }
                 }
                 Token::Keyword(Keywords::Impl) => {
@@ -106,12 +111,7 @@ impl TryFrom<&mut Parser> for FileOps {
                 Token::Keyword(Keywords::Type) => {
                     Self::TypeAlias(error!(TypeAlias::try_from(&mut *value), "FileOps")?)
                 }
-                token => {
-                    return Err(error!(
-                        "FileOps",
-                        format!("Expected enum, struct, defun keyword or #, got {token:#?}")
-                    ))
-                }
+                _ => unreachable!(),
             },
         )
     }
