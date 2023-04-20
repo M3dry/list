@@ -57,9 +57,13 @@ Ok(
         against: TypeCreation(
             Vars(
                 Space(
-                    "Option",
+                    Identifier(
+                        "Option",
+                    ),
                     Str(
-                        "None",
+                        Identifier(
+                            "None",
+                        ),
                     ),
                 ),
                 [],
@@ -69,9 +73,13 @@ Ok(
             Branch {
                 pattern: Enum(
                     Space(
-                        "Option",
+                        Identifier(
+                            "Option",
+                        ),
                         Str(
-                            "None",
+                            Identifier(
+                                "None",
+                            ),
                         ),
                     ),
                 ),
@@ -88,9 +96,13 @@ Ok(
             Branch {
                 pattern: EnumVars(
                     Space(
-                        "Option",
+                        Identifier(
+                            "Option",
+                        ),
                         Str(
-                            "Some",
+                            Identifier(
+                                "Some",
+                            ),
                         ),
                     ),
                     [
@@ -128,9 +140,13 @@ Ok(
             Branch {
                 pattern: EnumVars(
                     Space(
-                        "Option",
+                        Identifier(
+                            "Option",
+                        ),
                         Str(
-                            "Some",
+                            Identifier(
+                                "Some",
+                            ),
                         ),
                     ),
                     [
@@ -159,7 +175,9 @@ Ok(
         against: TypeCreation(
             Struct(
                 Str(
-                    "StructType",
+                    Identifier(
+                        "StructType",
+                    ),
                 ),
                 [
                     (
@@ -188,7 +206,9 @@ Ok(
             Branch {
                 pattern: Struct(
                     Str(
-                        "StructType",
+                        Identifier(
+                            "StructType",
+                        ),
                     ),
                     [
                         Left(
@@ -229,7 +249,9 @@ Ok(
             Branch {
                 pattern: Struct(
                     Str(
-                        "StructType",
+                        Identifier(
+                            "StructType",
+                        ),
                     ),
                     [
                         Left(

@@ -18,6 +18,7 @@ mod tests;
 pub mod r#trait;
 pub mod r#type;
 pub mod r#use;
+pub mod turbofish;
 
 use std::{collections::VecDeque, path::PathBuf};
 

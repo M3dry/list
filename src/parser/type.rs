@@ -1,6 +1,6 @@
 use crate::tokenizer::{BuiltinTypes, Int, Keywords, Literals, Token};
 
-use super::{error, exp::TurboFish, Parser, ParserError, ParserErrorStack};
+use super::{error, turbofish::TurboIden, Parser, ParserError, ParserErrorStack};
 
 #[derive(Debug)]
 pub enum Type {
@@ -20,7 +20,19 @@ impl TryFrom<&mut Parser> for Type {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        match error!("Type", value.pop_front(), [Token::Ref, Token::Type(_), Token::Char(':'), Token::Identifier(_), Token::BracketOpen, Token::AngleBracketOpen, Token::ParenOpen])? {
+        match error!(
+            "Type",
+            value.pop_front(),
+            [
+                Token::Ref,
+                Token::Type(_),
+                Token::Char(':'),
+                Token::Identifier(_),
+                Token::BracketOpen,
+                Token::AngleBracketOpen,
+                Token::ParenOpen
+            ]
+        )? {
             Token::Ref if value.first() == Some(&Token::Slash) => {
                 let lifetimes = error!(Lifetimes::try_from(&mut *value), "Type")?;
 
@@ -62,7 +74,11 @@ impl TryFrom<&mut Parser> for Type {
             Token::BracketOpen => {
                 let r#type = Box::new(error!(Type::try_from(&mut *value), "Type")?);
 
-                match error!("Type", value.pop_front(), [Token::BracketClose, Token::Char(';')])? {
+                match error!(
+                    "Type",
+                    value.pop_front(),
+                    [Token::BracketClose, Token::Char(';')]
+                )? {
                     Token::BracketClose => Ok(Type::Array(r#type, None)),
                     Token::Char(';') => {
                         let Token::Literal(Literals::Int(Int(false, len))) =
@@ -204,64 +220,37 @@ impl ToString for Lifetimes {
 
 #[derive(Debug)]
 pub enum NamespacedType {
-    Space(String, Box<NamespacedType>),
-    Str(String),
-    TurboFish(TurboFish),
-    TurboFishSpace(TurboFish, Box<NamespacedType>),
+    Space(TurboIden, Box<NamespacedType>),
+    Str(TurboIden),
 }
 
 impl TryFrom<&mut Parser> for NamespacedType {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        if value.nth(1) == Some(&Token::AngleBracketOpen) {
-            let turbofish = error!(TurboFish::try_from(&mut *value), "NamespacedType")?;
+        let name = error!(TurboIden::try_from(&mut *value), "NamespacedType")?;
 
-            return Ok(
-                if value.first() == Some(&Token::Keyword(Keywords::LeftArrow)) {
-                    value.pop_front();
-
-                    Self::TurboFishSpace(
-                        turbofish,
-                        Box::new(error!(
-                            NamespacedType::try_from(&mut *value),
-                            "NamespacedType"
-                        )?),
-                    )
-                } else {
-                    Self::TurboFish(turbofish)
-                },
-            );
-        }
-
-        Ok(match error!("NamespacedType", value.pop_front(), [Token::Identifier(_)])? {
-            Token::Identifier(iden)
-                if value.first() == Some(&Token::Keyword(Keywords::LeftArrow)) =>
-            {
+        Ok(
+            if value.first() == Some(&Token::Keyword(Keywords::LeftArrow)) {
                 value.pop_front();
-                NamespacedType::Space(
-                    iden,
-                    Box::new(error!(
-                        NamespacedType::try_from(&mut *value),
-                        "NamescapedType"
-                    )?),
+                Self::Space(
+                    name,
+                    Box::new(error!(Self::try_from(&mut *value), "NamespacedType")?),
                 )
-            }
-            Token::Identifier(iden) => NamespacedType::Str(iden),
-            _ => unreachable!(),
-        })
+            } else {
+                Self::Str(name)
+            },
+        )
     }
 }
 
 impl ToString for NamespacedType {
     fn to_string(&self) -> String {
         match self {
-            Self::Space(name, namespaces) => format!("{name}::{}", namespaces.to_string()),
-            Self::Str(name) => format!("{name}"),
-            Self::TurboFish(turbofish) => turbofish.to_string(),
-            Self::TurboFishSpace(turbofish, namespaces) => {
-                format!("{}::{}", turbofish.to_string(), namespaces.to_string())
+            Self::Space(name, namespaces) => {
+                format!("{}::{}", name.to_string(), namespaces.to_string())
             }
+            Self::Str(name) => format!("{}", name.to_string()),
         }
     }
 }
@@ -318,7 +307,11 @@ impl TryFrom<&mut Parser> for Constraints {
         let mut constraints = vec![];
 
         loop {
-            let next = error!("Constraints", value.pop_front(), [Token::Slash, Token::Identifier(_)])?;
+            let next = error!(
+                "Constraints",
+                value.pop_front(),
+                [Token::Slash, Token::Identifier(_)]
+            )?;
             match next {
                 Token::Slash => {
                     return Ok(Self(constraints));
@@ -356,7 +349,11 @@ impl TryFrom<&mut Parser> for TypeAlias {
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
         let _ = error!("TypeALias", value.pop_front(), [Token::ParenOpen])?;
-        let _ = error!("TypeALias", value.pop_front(), [Token::Keyword(Keywords::Type)])?;
+        let _ = error!(
+            "TypeALias",
+            value.pop_front(),
+            [Token::Keyword(Keywords::Type)]
+        )?;
         let name = match error!("TypeAlias", value.pop_front(), [Token::Identifier(_)])? {
             Token::Identifier(iden) => iden,
             _ => unreachable!(),
@@ -364,7 +361,7 @@ impl TryFrom<&mut Parser> for TypeAlias {
 
         if value.first() == Some(&Token::ParenClose) {
             value.pop_front();
-            return Ok(Self::Def(name))
+            return Ok(Self::Def(name));
         }
 
         let r#type = error!(Type::try_from(&mut *value), "TypeALias")?;
@@ -380,7 +377,7 @@ impl ToString for TypeAlias {
             Self::Alias { name, r#type } => {
                 format!("type {} = {};", name, r#type.to_string())
             }
-            Self::Def(name) => format!("type {name};")
+            Self::Def(name) => format!("type {name};"),
         }
     }
 }

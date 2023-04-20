@@ -1,17 +1,15 @@
-use either::Either;
-
 use crate::tokenizer::{Keywords, Token};
 
 use super::{
     error,
-    exp::TurboFish,
+    turbofish::TurboIden,
     file::FileOps,
     Parser, ParserError, ParserErrorStack, Error,
 };
 
 #[derive(Debug)]
 pub struct Trait {
-    name: Either<String, TurboFish>,
+    name: TurboIden,
     body: Vec<FileOps>,
 }
 
@@ -21,14 +19,7 @@ impl TryFrom<&mut Parser> for Trait {
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
         let _ = error!("Trait", value.pop_front(), [Token::ParenOpen])?;
         let _ = error!("Trait", value.pop_front(), [Token::Keyword(Keywords::Trait)])?;
-        let name = if value.nth(1) == Some(&Token::Keyword(Keywords::TurboStart)) {
-            Either::Right(error!(TurboFish::try_from(&mut *value), "Trait")?)
-        } else {
-            match error!("Trait", value.pop_front(), [Token::Identifier(_)])? {
-                Token::Identifier(iden) => Either::Left(iden),
-                _ => unreachable!(),
-            }
-        };
+        let name = error!(TurboIden::try_from(&mut *value), "Trait")?;
         let mut body = vec![];
         let _ = error!("Trait", value.pop_front(), [Token::BracketOpen])?;
 
@@ -64,10 +55,7 @@ impl ToString for Trait {
     fn to_string(&self) -> String {
         format!(
             "trait {} {{{}}}",
-            match &self.name {
-                Either::Right(name) => name.to_string(),
-                Either::Left(turbofish) => turbofish.to_string(),
-            },
+            self.name.to_string(),
             &if self.body.is_empty() {
                 format!("\n")
             } else {

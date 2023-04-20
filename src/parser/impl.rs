@@ -1,9 +1,11 @@
-use either::Either;
-
 use crate::tokenizer::{Keywords, Token};
 
 use super::{
-    error, exp::TurboFish, file::FileOps, r#type::Generic, Parser, ParserError, ParserErrorStack, Error,
+    error,
+    file::FileOps,
+    r#type::Generic,
+    turbofish::TurboIden,
+    Error, Parser, ParserError, ParserErrorStack,
 };
 
 #[derive(Debug)]
@@ -14,8 +16,8 @@ pub enum Impl {
     Trait {
         lifetimes: Vec<String>,
         generics: Vec<Generic>,
-        r#trait: Either<String, TurboFish>,
-        r#for: Either<String, TurboFish>,
+        r#trait: TurboIden,
+        r#for: TurboIden,
         /// Can only be Function, Attribute, Use, TypeAlias
         body: Vec<FileOps>,
     },
@@ -26,7 +28,7 @@ pub enum Impl {
     Funcs {
         lifetimes: Vec<String>,
         generics: Vec<Generic>,
-        r#for: Either<String, TurboFish>,
+        r#for: TurboIden,
         /// Can only be Function, Attribute, Use, TypeAlias
         body: Vec<FileOps>,
     },
@@ -55,26 +57,11 @@ impl TryFrom<&mut Parser> for Impl {
             }
         }
 
-        let name = if value.nth(1) == Some(&Token::Keyword(Keywords::TurboStart)) {
-            Either::Right(error!(TurboFish::try_from(&mut *value), "Impl")?)
-        } else {
-            match error!("Impl", value.pop_front(), [Token::Identifier(_)])? {
-                Token::Identifier(iden) => Either::Left(iden),
-                _ => unreachable!(),
-            }
-        };
-
+        let name = error!(TurboIden::try_from(&mut *value), "Impl")?;
         let for_trait = if value.first() == Some(&Token::Keyword(Keywords::LeftArrow)) {
             value.pop_front();
-            let name = if value.nth(1) == Some(&Token::Keyword(Keywords::TurboStart)) {
-                Either::Right(error!(TurboFish::try_from(&mut *value), "Impl")?)
-            } else {
-                match error!("Impl", value.pop_front(), [Token::Identifier(_)])? {
-                    Token::Identifier(iden) => Either::Left(iden),
-                    _ => unreachable!()
-                }
-            };
-            Some(name)
+
+            Some(error!(TurboIden::try_from(&mut *value), "Impl")?)
         } else {
             None
         };
@@ -98,7 +85,9 @@ impl TryFrom<&mut Parser> for Impl {
                 file => {
                     return Err(error!(
                         "Trait",
-                        Error::Other(format!("Expected function, use, type alias or attribute, got {file:#?}"))
+                        Error::Other(format!(
+                            "Expected function, use, type alias or attribute, got {file:#?}"
+                        ))
                     ))
                 }
             })
@@ -158,14 +147,8 @@ impl ToString for Impl {
                         }
                     })
                 },
-                match r#trait {
-                    Either::Left(str) => str.to_string(),
-                    Either::Right(turbofish) => turbofish.to_string(),
-                },
-                match r#for {
-                    Either::Left(str) => str.to_string(),
-                    Either::Right(turbofish) => turbofish.to_string(),
-                },
+                r#trait.to_string(),
+                r#for.to_string(),
                 &if body.is_empty() {
                     format!("\n")
                 } else {
@@ -203,10 +186,7 @@ impl ToString for Impl {
                         }
                     })
                 },
-                match r#for {
-                    Either::Left(str) => str.to_string(),
-                    Either::Right(turbofish) => turbofish.to_string(),
-                },
+                r#for.to_string(),
                 &if body.is_empty() {
                     format!("\n")
                 } else {
