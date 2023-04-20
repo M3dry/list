@@ -5,6 +5,7 @@ macro_rules! tostrrr {
     ($type:tt, $str:ident, $parser:ident) => {{
         match $type::try_from(&mut $parser) {
             Ok(res) if $str => res.to_string(),
+            Err(res) => format!("{res}"),
             res => format!("{res:#?}"),
         }
     }};

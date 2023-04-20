@@ -73,8 +73,8 @@ impl std::fmt::Display for Error {
         match self {
             Error::NoTokens => write!(f, "Expected more tokens"),
             Error::Other(str) => write!(f, "{str}"),
-            Error::Expected(expected, got) => write!(f, "Expected {expected:#?}, got {got:#?}"),
-            Error::ExpectedV(expected, got) => write!(f, "Expected {expected:#?}, got {got:#?}"),
+            Error::Expected(expected, got) => write!(f, "Expected {expected}, got {got:?}"),
+            Error::ExpectedV(expected, got) => write!(f, "Expected {expected:#?},\ngot {got:?}"),
         }
     }
 }
@@ -91,10 +91,7 @@ pub struct ParserError {
 
 impl std::fmt::Display for ParserError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}:", self.err)?;
-        for stack in &self.stack {
-            write!(f, "{stack}")?;
-        }
+        write!(f, "{}:\n{}", self.err, self.stack.iter().map(|stack| format!("{stack}")).collect::<Vec<String>>().join("\n"))?;
 
         Ok(())
     }
@@ -111,18 +108,11 @@ impl std::fmt::Display for ParserErrorStack {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{}({}:{};{})",
-            self.name, self.file, self.location.0, self.location.0
+            "{}({}[{}:{}])",
+            self.name, self.file, self.location.0, self.location.1
         )
     }
 }
-
-// #[derive(Debug)]
-// pub enum Expects {
-//     Single(Token),
-//     Multiple(Vec<Token>),
-//     DontCare,
-// }
 
 #[derive(Debug)]
 pub struct Parser {
@@ -139,7 +129,7 @@ impl Parser {
     pub fn to_file_str(&mut self) -> String {
         match File::try_from(self) {
             Ok(file) => file.to_string(),
-            Err(err) => panic!("{}", err.to_string()),
+            Err(err) => panic!("{err}"),
         }
     }
 
@@ -174,37 +164,6 @@ impl Parser {
             Err(error!(func, Error::NoTokens))
         }
     }
-
-    // fn pop_front_expect(&mut self, func: &'static str, expects: Expects) -> Result<Token, ParserError> {
-    //     let res = self.tokens.pop_front().ok_or(error!(func, Error::NoTokens));
-    //     if res.is_ok() {
-    //         let token = res.unwrap();
-    //         match expects {
-    //             Expects::Multiple(expected) if !expected.contains(&token) => Err(error!(func, Error::ExpectedV(expected, token))),
-    //             Expects::Single(expected) if expected != token => Err(error!(func, Error::Expected(expected, token))),
-    //             _ => res
-    //         }
-    //     } else {
-    //         res
-    //     }
-    // }
-
-    // fn pop_front_expect_fn(&mut self, func: &'static str, expects: fn (&Token) -> Result<(), Error>) -> Result<Token, ParserError> {
-    //     let res = self.tokens.pop_front().ok_or(error!(func, Error::NoTokens));
-    //     if res.is_ok() {
-    //         let token = res.unwrap();
-    //         match expects(&token) {
-    //             Err(err) => error!(func, err),
-    //             _ => res,
-    //         }
-    //     } else {
-    //         res
-    //     }
-    // }
-
-    // fn pop_front_err(&mut self, func: &'static str) -> Result<Token, ParserError> {
-    //     self.tokens.pop_front().ok_or(error!(func, Error::NoTokens))
-    // }
 
     fn pop_front(&mut self) -> Option<Token> {
         self.tokens.pop_front()
