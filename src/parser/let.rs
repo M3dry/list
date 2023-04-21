@@ -33,14 +33,9 @@ impl TryFrom<&mut Parser> for Let {
                         break;
                     }
 
-                    let iden = if let Token::Identifier(iden) = error!("Let", value.pop_front(), [Token::Identifier(_)])? {
-                        iden
-                    } else {
-                        unreachable!()
-                    };
-
+                    let iden = error!("Let", value);
                     let exp = Exp::try_from(&mut *value)?;
-                    let _ = error!("Let vars", value.pop_front(), [Token::ParenClose])?;
+                    let _ = error!("Let", value.pop_front(), [Token::ParenClose])?;
 
                     vars.push((iden, exp));
                 }

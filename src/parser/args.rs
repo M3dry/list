@@ -79,10 +79,7 @@ impl TryFrom<&mut Parser> for ArgsTyped {
                 }
                 Token::BackTick => {
                     value.pop_front();
-                    match error!("ArgsTyped", value.pop_front(), [Token::Identifier(_)])? {
-                        Token::Identifier(iden) => lifetimes.push(iden),
-                        _ => unreachable!(),
-                    }
+                    lifetimes.push(error!("ArgsTyped", value))
                 }
                 _ => break,
             }

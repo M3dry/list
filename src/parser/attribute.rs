@@ -82,11 +82,7 @@ impl TryFrom<&mut Parser> for AttributeOps {
                     }
                 }
                 Token::Char('=') => {
-                    let iden =
-                        match error!("AttributeOps", value.pop_front(), [Token::Identifier(_)])? {
-                            Token::Identifier(iden) => iden,
-                            _ => unreachable!(),
-                        };
+                    let iden = error!("AttributeOps", value);
                     let exp = error!(Exp::try_from(&mut *value), "AttributeOps")?;
                     let _ = error!("AttributeOps", value.pop_front(), [Token::ParenClose])?;
 

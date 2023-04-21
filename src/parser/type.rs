@@ -112,16 +112,6 @@ impl TryFrom<&mut Parser> for Type {
             }
             Token::ParenOpen => {
                 match error!("Type", value.pop_front(), [Token::Identifier(_)])? {
-                    // Token::Type(builtin) => {
-                    //     if value.pop_front() != Some(Token::ParenClose) {
-                    //         Err(error!(
-                    //             "Type complex/builtin",
-                    //             format!("Expected an identifier, got a builtin type"),
-                    //         ))
-                    //     } else {
-                    //         Ok(Type::Builtin(builtin))
-                    //     }
-                    // }
                     Token::Identifier(iden) => {
                         let mut types = vec![];
 
@@ -196,10 +186,7 @@ impl TryFrom<&mut Parser> for Lifetimes {
                 break;
             }
 
-            match error!("Lifetimes", value.pop_front(), [Token::Identifier(_)])? {
-                Token::Identifier(iden) => lifetimes.push(iden),
-                _ => unreachable!(),
-            }
+            lifetimes.push(error!("Lifetimes", value));
         }
 
         Ok(Self(lifetimes))
@@ -269,10 +256,7 @@ impl TryFrom<&mut Parser> for Generic {
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
         let _ = error!("Generic", value.pop_front(), [Token::Char(':')])?;
-        let name = match error!("Generic", value.pop_front(), [Token::Identifier(_)])? {
-            Token::Identifier(iden) => iden,
-            _ => unreachable!(),
-        };
+        let name = error!("Generic", value);
 
         if value.first() == Some(&Token::Slash) {
             Ok(Self::Constrained {
@@ -354,10 +338,7 @@ impl TryFrom<&mut Parser> for TypeAlias {
             value.pop_front(),
             [Token::Keyword(Keywords::Type)]
         )?;
-        let name = match error!("TypeAlias", value.pop_front(), [Token::Identifier(_)])? {
-            Token::Identifier(iden) => iden,
-            _ => unreachable!(),
-        };
+        let name = error!("TypeAlias", value);
 
         if value.first() == Some(&Token::ParenClose) {
             value.pop_front();

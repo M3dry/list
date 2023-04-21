@@ -112,11 +112,7 @@ impl TryFrom<&mut Parser> for DoActions {
                 }
                 Token::Identifier(_) => {
                     if value.nth(1) == Some(&Token::Keyword(Keywords::RightArrow)) {
-                        let var = if let Some(Token::Identifier(iden)) = value.pop_front() {
-                            iden
-                        } else {
-                            unreachable!()
-                        };
+                        let var = error!("DoActions", value);
                         value.pop_front();
 
                         Self::Assignment(var, error!(Exp::try_from(&mut *value), "DoActions")?)

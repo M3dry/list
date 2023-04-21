@@ -236,22 +236,14 @@ impl TryFrom<&mut Parser> for Pattern {
                                         if value.nth(1)
                                             == Some(&Token::Keyword(Keywords::LeftArrow))
                                         {
-                                            let field = match error!("Pattern", value.pop_front(), [Token::Identifier(_)])? {
-                                                Token::Identifier(iden) => iden,
-                                                _ => unreachable!(),
-                                            };
+                                            let field = error!("Pattern", value);
                                             value.pop_front();
                                             let pat =
                                                 error!(Self::try_from(&mut *value), "Pattern")?;
 
                                             fields.push(Either::Left((field, pat)))
                                         } else {
-                                            match error!("Pattern", value.pop_front(), [Token::Identifier(_)])? {
-                                                Token::Identifier(iden) => {
-                                                    fields.push(Either::Right(iden))
-                                                }
-                                                _ => unreachable!()
-                                            }
+                                            fields.push(Either::Right(error!("Pattern", value)));
                                         }
                                     }
                                 }

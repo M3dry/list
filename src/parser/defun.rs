@@ -28,11 +28,7 @@ impl TryFrom<&mut Parser> for Defun {
         let _ = error!("Defun", value.pop_front(), [Token::ParenOpen])?;
         let scope = Scope::try_from(&mut *value).unwrap();
         let _ = error!("Defun", value.pop_front(), [Token::Keyword(Keywords::Defun)])?;
-        let name = if let Token::Identifier(iden) = error!("Defun", value.pop_front(), [Token::Identifier(_)])? {
-            iden
-        } else {
-            unreachable!()
-        };
+        let name = error!("Defun", value);
         let args = error!(ArgsTyped::try_from(&mut *value), "Defun")?;
         let _ = error!("Defun", value.pop_front(), [Token::Keyword(Keywords::LeftArrow)])?;
         let return_type = error!(Type::try_from(&mut *value), "Defun")?;

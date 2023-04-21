@@ -68,11 +68,7 @@ impl TryFrom<&mut Parser> for Exp {
                     Self::TurboFish(error!(TurboFish::try_from(&mut *value), "Exp")?)
                 }
                 _ => {
-                    if let Token::Identifier(iden) = value.pop_front().unwrap() {
-                        Self::Variable(iden)
-                    } else {
-                        unreachable!()
-                    }
+                    Self::Variable(error!("Exp", value))
                 }
             },
             Token::Literal(_) => {
@@ -150,11 +146,7 @@ impl TryFrom<&mut Parser> for Exp {
                 Token::Identifier(_) => match value.nth(2) {
                     Some(&Token::Slash | &Token::Char('.')) => {
                         value.pop_front();
-                        let mut exp = if let Token::Identifier(iden) = value.pop_front().unwrap() {
-                            Self::Variable(iden)
-                        } else {
-                            unreachable!()
-                        };
+                        let mut exp = Self::Variable(error!("Exp", value));
 
                         loop {
                             exp = match error!(
@@ -166,14 +158,7 @@ impl TryFrom<&mut Parser> for Exp {
                                     value.pop_front();
                                     Self::Field(
                                         Box::new(exp),
-                                        match error!(
-                                            "Exp",
-                                            value.pop_front(),
-                                            [Token::Identifier(_)]
-                                        )? {
-                                            Token::Identifier(iden) => iden,
-                                            _ => unreachable!(),
-                                        },
+                                        error!("Exp", value),
                                     )
                                 }
                                 Token::Char('.') => {
@@ -217,11 +202,7 @@ impl TryFrom<&mut Parser> for Exp {
                     }
                     _ => {
                         value.pop_front();
-                        let func = if let Token::Identifier(iden) = value.pop_front().unwrap() {
-                            iden
-                        } else {
-                            unreachable!()
-                        };
+                        let func = error!("Exp", value);
                         let mut args = vec![];
 
                         loop {
@@ -265,14 +246,7 @@ impl TryFrom<&mut Parser> for Exp {
                                     value.pop_front();
                                     Self::Field(
                                         Box::new(exp),
-                                        match error!(
-                                            "Exp",
-                                            value.pop_front(),
-                                            [Token::Identifier(_)]
-                                        )? {
-                                            Token::Identifier(iden) => iden,
-                                            _ => unreachable!(),
-                                        },
+                                        error!("Exp", value),
                                     )
                                 }
                                 Token::Char('.') => {
@@ -363,12 +337,7 @@ impl TryFrom<&mut Parser> for Exp {
                 }
                 Some(&Token::Slash) => {
                     value.pop_front();
-                    let field = match error!("Exp", value.pop_front(), [Token::Identifier(_)])? {
-                        Token::Identifier(iden) => iden,
-                        _ => unreachable!(),
-                    };
-
-                    Self::Field(Box::new(ret), field)
+                    Self::Field(Box::new(ret), error!("Exp", value))
                 }
                 _ => return Ok(ret),
             };
@@ -513,13 +482,7 @@ impl TryFrom<&mut Parser> for TypeCreation {
                         break;
                     }
 
-                    let name = if let Token::Identifier(iden) =
-                        error!("TypeCreation", value.pop_front(), [Token::Identifier(_)])?
-                    {
-                        iden
-                    } else {
-                        unreachable!()
-                    };
+                    let name = error!("TypeCreation", value);
                     let _ = error!(
                         "TypeCreation",
                         value.pop_front(),

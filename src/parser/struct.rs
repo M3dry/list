@@ -26,13 +26,12 @@ impl TryFrom<&mut Parser> for Struct {
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
         let _ = error!("Struct", value.pop_front(), [Token::ParenOpen])?;
-        let _ = error!("Struct", value.pop_front(), [Token::Keyword(Keywords::Struct)])?;
-        let name = if let Token::Identifier(iden) = error!("Struct", value.pop_front(), [Token::Identifier(_)])? {
-            iden
-        } else {
-            unreachable!()
-        };
-
+        let _ = error!(
+            "Struct",
+            value.pop_front(),
+            [Token::Keyword(Keywords::Struct)]
+        )?;
+        let name = error!("Struct", value);
         let mut generics = vec![];
 
         loop {
@@ -187,20 +186,22 @@ impl TryFrom<&mut Parser> for StructField {
         let peek = value.first_err("StructField")?;
 
         let attr = if peek == &Token::Char('#') {
-                Some(error!(Attribute::try_from(&mut *value), "StructField")?)
+            Some(error!(Attribute::try_from(&mut *value), "StructField")?)
         } else {
             None
         };
 
-        Ok(match error!("StructField", value.pop_front(), [Token::Identifier(_)])? {
-            Token::Identifier(iden) => {
-                let name = iden;
-                let _ = error!("StructField", value.pop_front(), [Token::Keyword(Keywords::LeftArrow)])?;
-                let r#type = error!(Type::try_from(&mut *value), "StructField")?;
+        let name = error!("StructField", value);
+        let _ = error!(
+            "StructField",
+            value.pop_front(),
+            [Token::Keyword(Keywords::LeftArrow)]
+        )?;
 
-                StructField { attr, name, r#type }
-            }
-            _ => unreachable!(),
+        Ok(Self {
+            attr,
+            name,
+            r#type: error!(Type::try_from(&mut *value), "StructField")?,
         })
     }
 }

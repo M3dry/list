@@ -20,11 +20,7 @@ impl TryFrom<&mut Parser> for Enum {
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
         let _ = error!("Enum", value.pop_front(), [Token::ParenOpen])?;
         let _ = error!("Enum", value.pop_front(), [Token::Keyword(Keywords::Enum)])?;
-        let name = if let Token::Identifier(iden) = error!("Enum", value.pop_front(), [Token::Identifier(_)])? {
-            iden
-        } else {
-            unreachable!()
-        };
+        let name = error!("Enum", value);
 
         let mut generics = vec![];
 
@@ -102,10 +98,7 @@ impl TryFrom<&mut Parser> for Variant {
         match error!("Variant", value.pop_front(), [Token::Identifier(_), Token::ParenOpen])? {
             Token::Identifier(iden) => Ok(Variant::Simple(iden)),
             Token::ParenOpen => {
-                let name = match error!("Variant", value.pop_front(), [Token::Identifier(_)])? {
-                    Token::Identifier(iden) => iden,
-                    _ => unreachable!(),
-                };
+                let name = error!("Variant", value);
 
                 match value.first_err("Variant")?
                 {

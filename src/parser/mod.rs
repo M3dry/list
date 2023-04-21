@@ -27,6 +27,13 @@ use std::ops::Index;
 use crate::tokenizer::{Token, Tokens};
 
 macro_rules! error {
+    ($func:literal, $value:ident) => {
+        if let Token::Identifier(iden) = error!($func, $value.pop_front(), [Token::Identifier(_)])? {
+            iden
+        } else {
+            unreachable!()
+        }
+    };
     ($error:expr, $name:literal) => {
         $error.map_err(|mut err| {
             err.stack.push(ParserErrorStack {
@@ -57,7 +64,7 @@ macro_rules! error {
         } else {
             Err(error!($func, super::Error::NoTokens))
         }
-    }
+    };
 }
 
 #[derive(Debug)]

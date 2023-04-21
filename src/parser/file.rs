@@ -71,6 +71,7 @@ impl TryFrom<&mut Parser> for FileOps {
                             | Keywords::Enum
                             | Keywords::Struct
                             | Keywords::Defun
+                            | Keywords::Mod
                             | Keywords::Impl
                             | Keywords::Trait
                             | Keywords::Type
@@ -89,6 +90,9 @@ impl TryFrom<&mut Parser> for FileOps {
                 }
                 Token::Keyword(Keywords::Defun) => {
                     Self::Function(error!(Defun::try_from(&mut *value), "FileOps")?)
+                }
+                Token::Keyword(Keywords::Mod) => {
+                    Self::Mod(error!(Mod::try_from(&mut *value), "FileOps")?)
                 }
                 Token::Identifier(iden) if &iden[..] == "pub" || &iden[..] == "crate" => {
                     match error!("FileOps", value.nth(2), [Token::Keyword(Keywords::Defun | Keywords::Mod)])?

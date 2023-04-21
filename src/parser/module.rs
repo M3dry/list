@@ -19,10 +19,7 @@ impl TryFrom<&mut Parser> for Mod {
         let _ = error!("Mod", value.pop_front(), [Token::ParenOpen])?;
         let scope = Scope::try_from(&mut *value).unwrap();
         let _ = error!("Mod", value.pop_front(), [Token::Keyword(Keywords::Mod)])?;
-        let name = match error!("Mod", value.pop_front(), [Token::Identifier(_)])? {
-            Token::Identifier(iden) => iden,
-            _ => unreachable!(),
-        };
+        let name = error!("Mod", value);
 
         if error!("Mod", value.pop_front(), [Token::ParenClose, Token::BracketOpen])? == Token::ParenClose {
             return Ok(Self::Header(scope, name));

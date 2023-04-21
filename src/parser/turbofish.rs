@@ -15,13 +15,9 @@ impl TryFrom<&mut Parser> for TurboIden {
         Ok(
             if value.nth(1) == Some(&Token::Keyword(Keywords::TurboStart)) {
                 Self::TurboFish(error!(TurboFish::try_from(&mut *value), "TurboIden")?)
-            } else if let Token::Identifier(iden) =
-                error!("TurboIden", value.pop_front(), [Token::Identifier(_)])?
-            {
-                Self::Identifier(iden)
             } else {
-                unreachable!()
-            },
+                Self::Identifier(error!("TurboIden", value))
+            }
         )
     }
 }
@@ -42,14 +38,7 @@ impl TryFrom<&mut Parser> for TurboFish {
     type Error = ParserError;
 
     fn try_from(value: &mut Parser) -> Result<Self, Self::Error> {
-        let var = if let Token::Identifier(iden) =
-            error!("TurboFish", value.pop_front(), [Token::Identifier(_)])?
-        {
-            iden
-        } else {
-            unreachable!()
-        };
-
+        let var = error!("TurboFish", value);
         let _ = error!(
             "TurboFish",
             value.pop_front(),
